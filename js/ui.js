@@ -39,9 +39,18 @@ export function renderNewEnemy() {
 }
 
 export const availableSpells =[
-    { id: 'firebolt', name: 'Огненный снаряд', type: 'Заговор', reqLevel: 2, costSlot: 0, desc: (p) => `Атака. Урон: ${p.level >= 5 ? '2d10' : '1d10'} огн.` },
-    { id: 'burning_hands', name: 'Огненные ладони', type: 'Магия (1 д.)', reqLevel: 3, costSlot: 1, desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: ${p.slotLevel + 2}d6 огн.` },
-    { id: 'fireball', name: 'Огненный шар', type: 'Магия (1 д.)', reqLevel: 9, costSlot: 1, desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: 8d6 огн.` }
+    { 
+        id: 'create_bonfire', name: 'Сотворение костра', type: 'Заговор', reqLevel: 2, costSlot: 0, 
+        desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: ${p.level >= 5 ? '2d8' : '1d8'} огн.` 
+    },
+    { 
+        id: 'thunderwave', name: 'Громовая волна', type: 'Магия (1 д.)', reqLevel: 3, costSlot: 1, 
+        desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: ${p.slotLevel + 1}d8 грома.` 
+    },
+    { 
+        id: 'fireball', name: 'Огненный шар', type: 'Магия (1 д.)', reqLevel: 9, costSlot: 1, 
+        desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: 8d6 огн.` 
+    }
 ];
 
 export function toggleSpellbook(show, castCallback) {
