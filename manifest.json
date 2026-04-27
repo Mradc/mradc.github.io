@@ -1,0 +1,16 @@
+{
+  "name": "The Vessel RPG",
+  "short_name": "Vessel",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#d84b20",
+  "orientation": "portrait",
+  "icons":[
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

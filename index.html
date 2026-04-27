@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>D&D 5e: The Vessel</title>
+    <link rel="stylesheet" href="css/styles.css">
+	<link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div id="menu-screen" class="flex-center">
+        <h1 style="color: var(--accent); margin-bottom: 5px; font-size: 28px;">Мантия Духа</h1>
+        <h2 style="font-size: 16px; color: #aaa; margin-bottom: 25px;">The Vessel: Cataclysm (Fire)</h2>
+        <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; text-align: left; font-size: 13px; max-width: 320px; line-height: 1.5;">
+            <p><b>Особенности по уровням:</b><br>
+               - Ур. 2: Адское возмездие (Реакция)<br>
+               - Ур. 3: Основные удары = <span class="dmg-fire">Огонь</span>.<br>
+               - Ур. 3: Форма Архонта (Пробивает сопр. и иммунитет к огню!)<br>
+               - Ур. 6: Мощь Древних (1 и 2 огня = 3)</p>
+            <p style="color: #ffb74d; margin-top: 10px;">Внимание: ресурсы между боями не восстанавливаются! Используйте магазин.</p>
+        </div>
+        <button id="btn-start" style="max-width: 200px;">Начать Игру</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <div class="entity-card enemy" id="enemy-ui">
+            <div class="avatar-container">
+                <img id="enemy-avatar" class="avatar" src="" alt="Enemy">
+                <div class="ac-badge" id="enemy-ac">12</div>
+            </div>
+            <div class="stats">
+                <p class="name" id="enemy-name">Враг</p>
+                <p class="enemy-traits" id="enemy-traits"></p>
+                <div class="bar-container">
+                    <div class="bar-fill hp-fill" id="enemy-hp-bar" style="width: 100%;"></div>
+                    <div class="bar-text" id="enemy-hp-text">10 / 10</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="combat-log"></div>
+
+        <div class="entity-card player" id="player-ui">
+            <div class="avatar-container">
+                <img id="player-avatar" class="avatar" src="https://hotbox.longstoryshort.app/avatar/6957f7e63bbc37d9e6693f9a.webp" alt="Player">
+                <div class="ac-badge" id="player-ac">16</div>
+            </div>
+            <div class="stats">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <p class="name">Кандидат 3 <span class="level-text" id="player-level">Ур. 1</span></p>
+                    <span class="gold-text" id="player-gold">💰 0</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-fill hp-fill" id="player-hp-bar" style="width: 100%;"></div>
+                    <div class="bar-text" id="player-hp-text">13 / 13</div>
+                </div>
+                <div class="bar-container" style="height: 6px; margin-top: 2px;">
+                    <div class="bar-fill xp-fill" id="player-xp-bar" style="width: 0%;"></div>
+                    <div class="bar-text" id="player-xp-text" style="font-size: 8px; line-height: 8px;">0 / 300</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="action-panel">
+            <div class="indicators" id="indicators">
+                <div id="ind-action"><span class="dot action"></span>Действие</div>
+                <div id="ind-bonus"><span class="dot bonus"></span>Бонусное действие</div>
+            </div>
+            
+            <div id="combat-actions">
+                <div class="action-row">
+                    <button class="btn-bonus btn-archon hidden" id="btn-archon">Форма Архонта</button>
+                    <button class="btn-action" id="btn-attack-main" style="grid-column: span 2;">Атака (Основная)</button>
+                </div>
+                <div class="action-row" style="margin-top: 8px;">
+                    <div class="toggle-box fire">
+                        <span><span id="giant-strike-text">Огн. Удар</span> (+1d10)</span>
+                        <label class="switch">
+                            <input type="checkbox" id="fire-toggle">
+                            <span class="slider fire-slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-box magic hidden" id="rebuke-box">
+                        <span>Возмездие <span id="rebuke-text">(0/0)</span></span>
+                        <label class="switch">
+                            <input type="checkbox" id="rebuke-toggle">
+                            <span class="slider magic-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="action-row" style="margin-top: 8px;">
+                    <button class="btn-bonus" id="btn-attack-bonus" disabled>Доп. удар</button>
+                    <button class="btn-end" id="btn-end-turn">Конец хода</button>
+                </div>
+            </div>
+
+            <div id="intermission-actions" class="hidden">
+                <div class="action-row">
+                    <button class="btn-bonus" id="btn-open-shop" style="border-color: #ffd700; color: #ffd700;">🛒 Магазин</button>
+                    <button class="btn-action" id="btn-next-stage">⚔️ Следующий бой</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="shop-modal" class="modal-overlay hidden">
+            <div class="shop-window">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+                    <h2 style="font-size: 18px; color: #ffd700;">Лавка Торговца</h2>
+                    <span id="shop-gold" style="color: #ffd700; font-weight: bold;">💰 0</span>
+                </div>
+                <div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;">
+                </div>
+                <button id="btn-close-shop" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="hidden flex-center">
+        <h1 id="game-over-title">Исход битвы</h1>
+        <p id="game-over-desc" style="margin: 20px 0; color: #ccc;"></p>
+        <button id="btn-restart" style="max-width: 200px;">Вернуться в меню</button>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
