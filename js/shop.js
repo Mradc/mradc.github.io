@@ -3,22 +3,19 @@ import { ui, updateUI, log } from './ui.js';
 
 export const shopItems =[
     { 
-        id: 'heal', name: 'Зелье лечения', desc: 'Восстанавливает 15 ХП', price: 20, 
-        buy: () => { player.hp = Math.min(player.maxHp, player.hp + 15); } 
+        id: 'heal', name: 'Зелье лечения', desc: 'Складывается в пояс. Восст. 15 ХП в бою (Бонус. действие).', price: 20, 
+        buy: () => { player.inventory.heal++; } 
     },
     { 
-        id: 'elixir', name: 'Эликсир духа', desc: 'Восст. 1 ячейку и 1 заряд Огн. удара', price: 50, 
-        buy: () => { 
-            player.spellSlots = Math.min(player.maxSpellSlots, player.spellSlots + 1); 
-            player.currentGiantStrikeCharges = Math.min(player.maxGiantStrikeCharges, player.currentGiantStrikeCharges + 1); 
-        } 
+        id: 'elixir', name: 'Эликсир духа', desc: 'Складывается в пояс. Восст. 1 ячейку и 1 Огн. удар в бою.', price: 50, 
+        buy: () => { player.inventory.elixir++; } 
     },
     { 
-        id: 'amulet', name: 'Амулет стойкости', desc: '+5 Максимального ХП', price: 150, 
+        id: 'amulet', name: 'Амулет стойкости', desc: '+5 Максимального ХП (Срабатывает сразу)', price: 150, 
         buy: () => { player.maxHp += 5; player.hp += 5; } 
     },
     { 
-        id: 'ring', name: 'Кольцо защиты', desc: '+1 Класс Брони (AC)', price: 300, 
+        id: 'ring', name: 'Кольцо защиты', desc: '+1 Класс Брони (Срабатывает сразу)', price: 300, 
         buy: () => { player.bonusAc += 1; } 
     }
 ];
@@ -40,11 +37,14 @@ export function renderShop() {
         ui.shopList.appendChild(el);
 
         const btn = el.querySelector(`#buy-${item.id}`);
-        // Проверка: скрываем зелья и эликсиры, если у нас и так максимум ресурсов
-        let isMaxHp = item.id === 'heal' && player.hp >= player.maxHp;
-        let isMaxRes = item.id === 'elixir' && player.spellSlots >= player.maxSpellSlots && player.currentGiantStrikeCharges >= player.maxGiantStrikeCharges;
+        
+        // Лимит: Максимум 3 зелья каждого типа в инвентаре
+        let isMaxHeal = item.id === 'heal' && player.inventory.heal >= 3;
+        let isMaxElixir = item.id === 'elixir' && player.inventory.elixir >= 3;
 
-        btn.disabled = player.gold < item.price || isMaxHp || isMaxRes;
+        btn.disabled = player.gold < item.price || isMaxHeal || isMaxElixir;
+        
+        if (isMaxHeal || isMaxElixir) btn.innerText = "Максимум (3)";
         
         btn.addEventListener('click', () => {
             if (player.gold >= item.price) {
@@ -52,17 +52,13 @@ export function renderShop() {
                 item.buy();
                 log(`🛒 Куплено: <b>${item.name}</b> за ${item.price} золота.`, 'system');
                 updateUI();
-                renderShop(); // Обновляем цены/доступность кнопок
+                renderShop(); 
             }
         });
     });
 }
 
 export function toggleShop(show) {
-    if (show) {
-        renderShop();
-        ui.shopModal.classList.remove('hidden');
-    } else {
-        ui.shopModal.classList.add('hidden');
-    }
+    if (show) { renderShop(); ui.shopModal.classList.remove('hidden'); } 
+    else { ui.shopModal.classList.add('hidden'); }
 }
