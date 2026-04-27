@@ -6,7 +6,6 @@
     <title>D&D 5e: The Vessel</title>
     <link rel="stylesheet" href="css/styles.css">
 	<link rel="manifest" href="manifest.json">
-	<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div id="menu-screen" class="flex-center">
@@ -16,9 +15,9 @@
             <p><b>Особенности по уровням:</b><br>
                - Ур. 2: Адское возмездие (Реакция)<br>
                - Ур. 3: Основные удары = <span class="dmg-fire">Огонь</span>.<br>
-               - Ур. 3: Форма Архонта (Пробивает сопр. и иммунитет к огню!)<br>
+               - Ур. 3: Форма Архонта (Пробивает сопр. и иммунитет!)<br>
                - Ур. 6: Мощь Древних (1 и 2 огня = 3)</p>
-            <p style="color: #ffb74d; margin-top: 10px;">Внимание: ресурсы между боями не восстанавливаются! Используйте магазин.</p>
+            <p style="color: #ffb74d; margin-top: 10px;">Внимание: покупайте зелья в магазине, чтобы лечиться прямо в бою!</p>
         </div>
         <button id="btn-start" style="max-width: 200px;">Начать Игру</button>
     </div>
@@ -73,6 +72,13 @@
                     <button class="btn-bonus btn-archon hidden" id="btn-archon">Форма Архонта</button>
                     <button class="btn-action" id="btn-attack-main" style="grid-column: span 2;">Атака (Основная)</button>
                 </div>
+                
+                <!-- Новая панель инвентаря -->
+                <div class="action-row" style="margin-top: 8px;">
+                    <button class="btn-bonus" id="btn-pot-heal" style="border-color: #e53935; color: #e53935; font-size: 12px;">❤️ Зелье (0)</button>
+                    <button class="btn-bonus hidden" id="btn-pot-elixir" style="border-color: #64b5f6; color: #64b5f6; font-size: 12px;">💧 Эликсир (0)</button>
+                </div>
+
                 <div class="action-row" style="margin-top: 8px;">
                     <div class="toggle-box fire">
                         <span><span id="giant-strike-text">Огн. Удар</span> (+1d10)</span>
