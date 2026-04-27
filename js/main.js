@@ -1,14 +1,17 @@
 import { ui } from './ui.js';
 import { gameState } from './state.js';
-import { startGame, startNextStage, executePlayerAttack, activateArchon, startEnemyTurn } from './combat.js';
+import { startGame, startNextStage, executePlayerAttack, activateArchon, startEnemyTurn, usePotion } from './combat.js';
 import { toggleShop } from './shop.js';
-window.Telegram.WebApp.expand();
 
 // Боевые кнопки
 ui.btnMain.addEventListener('click', () => executePlayerAttack(false));
 ui.btnBonus.addEventListener('click', () => executePlayerAttack(true));
 ui.btnArchon.addEventListener('click', () => activateArchon(false));
 ui.btnEnd.addEventListener('click', () => { if (gameState.inCombat) startEnemyTurn(); });
+
+// Кнопки инвентаря (зелья)
+ui.btnPotHeal.addEventListener('click', () => usePotion('heal'));
+ui.btnPotElixir.addEventListener('click', () => usePotion('elixir'));
 
 // Кнопки привала (между боями)
 ui.btnNextStage.addEventListener('click', () => startNextStage());
