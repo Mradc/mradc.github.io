@@ -16,7 +16,10 @@ export const ui = {
     
     combatActions: document.getElementById('combat-actions'), intermissionActions: document.getElementById('intermission-actions'), indicators: document.getElementById('indicators'),
     btnNextStage: document.getElementById('btn-next-stage'), btnOpenShop: document.getElementById('btn-open-shop'),
-    shopModal: document.getElementById('shop-modal'), btnCloseShop: document.getElementById('btn-close-shop'), shopList: document.getElementById('shop-list'), shopGold: document.getElementById('shop-gold')
+    shopModal: document.getElementById('shop-modal'), btnCloseShop: document.getElementById('btn-close-shop'), shopList: document.getElementById('shop-list'), shopGold: document.getElementById('shop-gold'),
+
+    // Кнопки инвентаря
+    btnPotHeal: document.getElementById('btn-pot-heal'), btnPotElixir: document.getElementById('btn-pot-elixir')
 };
 
 const traitNames = {
@@ -68,15 +71,23 @@ export function updateUI() {
         ui.giantStrikeText.innerText = `Огн. Удар (${player.currentGiantStrikeCharges}/${player.maxGiantStrikeCharges})`;
         ui.fireToggle.disabled = !canAct || player.fireStrikeUsedThisTurn || player.currentGiantStrikeCharges <= 0;
         
-        // ФИКС БАГА: Прячем или показываем Возмездие
+        // Кнопки инвентаря
+        ui.btnPotHeal.innerText = `❤️ Зелье (${player.inventory.heal})`;
+        ui.btnPotHeal.disabled = !canAct || player.bonusActions === 0 || player.inventory.heal === 0 || player.hp >= player.maxHp;
+
         if (player.level >= 2) {
+            ui.btnPotElixir.classList.remove('hidden');
+            ui.btnPotElixir.innerText = `💧 Эликсир (${player.inventory.elixir})`;
+            let isMaxRes = player.spellSlots >= player.maxSpellSlots && player.currentGiantStrikeCharges >= player.maxGiantStrikeCharges;
+            ui.btnPotElixir.disabled = !canAct || player.bonusActions === 0 || player.inventory.elixir === 0 || isMaxRes;
+
             ui.rebukeBox.classList.remove('hidden'); ui.rebukeText.innerText = `(${player.spellSlots}/${player.maxSpellSlots})`;
             ui.rebukeToggle.disabled = !gameState.inCombat || player.spellSlots <= 0;
         } else {
+            ui.btnPotElixir.classList.add('hidden');
             ui.rebukeBox.classList.add('hidden');
         }
 
-        // ФИКС БАГА: Прячем или показываем кнопку Архонта
         if (player.level >= 3) {
             ui.btnArchon.classList.remove('hidden'); ui.btnMain.style.gridColumn = "span 1";
             if (player.archonActive) { ui.btnArchon.disabled = true; ui.btnArchon.innerText = "Архонт Активен"; } 
