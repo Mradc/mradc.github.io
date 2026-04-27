@@ -18,18 +18,17 @@ export const ui = {
     btnNextStage: document.getElementById('btn-next-stage'), btnOpenShop: document.getElementById('btn-open-shop'),
     shopModal: document.getElementById('shop-modal'), btnCloseShop: document.getElementById('btn-close-shop'), shopList: document.getElementById('shop-list'), shopGold: document.getElementById('shop-gold'),
 
-    // Кнопки инвентаря
-    btnPotHeal: document.getElementById('btn-pot-heal'), btnPotElixir: document.getElementById('btn-pot-elixir')
+    btnPotHeal: document.getElementById('btn-pot-heal'), btnPotElixir: document.getElementById('btn-pot-elixir'),
+    
+    // Новые элементы для Магии
+    btnMagic: document.getElementById('btn-magic'), spellbookModal: document.getElementById('spellbook-modal'),
+    btnCloseSpellbook: document.getElementById('btn-close-spellbook'), spellList: document.getElementById('spell-list'), spellbookSlots: document.getElementById('spellbook-slots')
 };
 
-const traitNames = {
-    'nimble': 'Вёрткий (15% Уклонение)', 'undead_fortitude': 'Стойкость нежити', 'lifesteal': 'Вампиризм',
-    'regeneration': 'Регенерация', 'fire_resistance': 'Сопротивление огню', 'fire_immunity': 'Иммунитет к огню', 'reckless': 'Безрассудный (Крит 19-20)'
-};
+const traitNames = { 'nimble': 'Вёрткий', 'undead_fortitude': 'Стойкость нежити', 'lifesteal': 'Вампиризм', 'regeneration': 'Регенерация', 'fire_resistance': 'Сопротивление огню', 'fire_immunity': 'Иммунитет к огню', 'reckless': 'Безрассудный' };
 
 export function log(msg, type = 'system') {
-    const el = document.createElement('div');
-    el.className = `log-entry ${type}`; el.innerHTML = msg;
+    const el = document.createElement('div'); el.className = `log-entry ${type}`; el.innerHTML = msg;
     ui.log.appendChild(el); setTimeout(() => { ui.log.scrollTop = ui.log.scrollHeight; }, 10);
 }
 
@@ -37,6 +36,30 @@ export function renderNewEnemy() {
     if(!enemyState.current) return;
     ui.enemyAvatar.src = enemyState.current.avatar; ui.enemyName.innerText = enemyState.current.name; ui.enemyAc.innerText = enemyState.current.ac;
     ui.enemyTraits.innerText = enemyState.current.traits.length > 0 ? enemyState.current.traits.map(t => traitNames[t]).join(' • ') : "";
+}
+
+export const availableSpells =[
+    { id: 'firebolt', name: 'Огненный снаряд', type: 'Заговор', reqLevel: 2, costSlot: 0, desc: (p) => `Атака. Урон: ${p.level >= 5 ? '2d10' : '1d10'} огн.` },
+    { id: 'burning_hands', name: 'Огненные ладони', type: 'Магия (1 д.)', reqLevel: 3, costSlot: 1, desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: ${p.slotLevel + 2}d6 огн.` },
+    { id: 'fireball', name: 'Огненный шар', type: 'Магия (1 д.)', reqLevel: 9, costSlot: 1, desc: (p) => `Спасбросок (Сл ${p.spellSaveDc}). Урон: 8d6 огн.` }
+];
+
+export function toggleSpellbook(show, castCallback) {
+    if (show) {
+        ui.spellbookSlots.innerText = `Ячейки: ${player.spellSlots}/${player.maxSpellSlots}`;
+        ui.spellList.innerHTML = '';
+        availableSpells.forEach(spell => {
+            if (player.level < spell.reqLevel) return;
+            const el = document.createElement('div'); el.className = 'shop-item';
+            el.innerHTML = `<div class="shop-item-info"><span class="shop-item-name" style="color: #ba68c8;">${spell.name} <span style="font-size:10px; color:#aaa;">(${spell.type})</span></span><span class="shop-item-desc">${spell.desc(player)}</span></div>
+            <button class="btn-buy" id="cast-${spell.id}" style="border-color: #ba68c8; color: #ba68c8;">${spell.costSlot > 0 ? '-1 Ячейка' : 'Каст'}</button>`;
+            ui.spellList.appendChild(el);
+            const btn = el.querySelector(`#cast-${spell.id}`);
+            btn.disabled = (spell.costSlot > 0 && player.spellSlots < spell.costSlot) || player.actions === 0;
+            btn.addEventListener('click', () => { ui.spellbookModal.classList.add('hidden'); castCallback(spell); });
+        });
+        ui.spellbookModal.classList.remove('hidden');
+    } else { ui.spellbookModal.classList.add('hidden'); }
 }
 
 export function updateUI() {
@@ -71,31 +94,31 @@ export function updateUI() {
         ui.giantStrikeText.innerText = `Огн. Удар (${player.currentGiantStrikeCharges}/${player.maxGiantStrikeCharges})`;
         ui.fireToggle.disabled = !canAct || player.fireStrikeUsedThisTurn || player.currentGiantStrikeCharges <= 0;
         
-        // Кнопки инвентаря
         ui.btnPotHeal.innerText = `❤️ Зелье (${player.inventory.heal})`;
         ui.btnPotHeal.disabled = !canAct || player.bonusActions === 0 || player.inventory.heal === 0 || player.hp >= player.maxHp;
 
+        // Появление Магии и Возмездия
         if (player.level >= 2) {
-            ui.btnPotElixir.classList.remove('hidden');
-            ui.btnPotElixir.innerText = `💧 Эликсир (${player.inventory.elixir})`;
+            ui.btnMagic.classList.remove('hidden'); ui.btnMain.style.gridColumn = "span 1";
+            ui.btnMagic.disabled = !canAct || player.actions === 0;
+
+            ui.btnPotElixir.classList.remove('hidden'); ui.btnPotElixir.innerText = `💧 Эликсир (${player.inventory.elixir})`;
             let isMaxRes = player.spellSlots >= player.maxSpellSlots && player.currentGiantStrikeCharges >= player.maxGiantStrikeCharges;
             ui.btnPotElixir.disabled = !canAct || player.bonusActions === 0 || player.inventory.elixir === 0 || isMaxRes;
 
             ui.rebukeBox.classList.remove('hidden'); ui.rebukeText.innerText = `(${player.spellSlots}/${player.maxSpellSlots})`;
             ui.rebukeToggle.disabled = !gameState.inCombat || player.spellSlots <= 0;
         } else {
-            ui.btnPotElixir.classList.add('hidden');
-            ui.rebukeBox.classList.add('hidden');
+            ui.btnMagic.classList.add('hidden'); ui.btnMain.style.gridColumn = "span 2";
+            ui.btnPotElixir.classList.add('hidden'); ui.rebukeBox.classList.add('hidden');
         }
 
         if (player.level >= 3) {
-            ui.btnArchon.classList.remove('hidden'); ui.btnMain.style.gridColumn = "span 1";
+            ui.btnArchon.classList.remove('hidden');
             if (player.archonActive) { ui.btnArchon.disabled = true; ui.btnArchon.innerText = "Архонт Активен"; } 
             else if (player.level >= 7) { ui.btnArchon.disabled = true; ui.btnArchon.innerText = "Авто-Архонт"; } 
             else { ui.btnArchon.disabled = !canAct || player.bonusActions === 0; ui.btnArchon.innerText = "Форма Архонта"; }
-        } else {
-            ui.btnArchon.classList.add('hidden'); ui.btnMain.style.gridColumn = "span 2";
-        }
+        } else { ui.btnArchon.classList.add('hidden'); }
 
         ui.indAction.className = `dot action ${player.actions > 0 ? '' : 'inactive'}`;
         ui.indBonus.className = `dot bonus ${player.bonusActions > 0 ? '' : 'inactive'}`;
