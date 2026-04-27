@@ -2,6 +2,7 @@ import { ui } from './ui.js';
 import { gameState } from './state.js';
 import { startGame, startNextStage, executePlayerAttack, activateArchon, startEnemyTurn } from './combat.js';
 import { toggleShop } from './shop.js';
+window.Telegram.WebApp.expand();
 
 // Боевые кнопки
 ui.btnMain.addEventListener('click', () => executePlayerAttack(false));
