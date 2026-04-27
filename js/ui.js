@@ -15,14 +15,16 @@ export const ui = {
     gameOverTitle: document.getElementById('game-over-title'), gameOverDesc: document.getElementById('game-over-desc'),
     
     combatActions: document.getElementById('combat-actions'), intermissionActions: document.getElementById('intermission-actions'), indicators: document.getElementById('indicators'),
-    btnNextStage: document.getElementById('btn-next-stage'), btnOpenShop: document.getElementById('btn-open-shop'),
+    btnOpenShop: document.getElementById('btn-open-shop'), pathChoices: document.getElementById('path-choices'),
     shopModal: document.getElementById('shop-modal'), btnCloseShop: document.getElementById('btn-close-shop'), shopList: document.getElementById('shop-list'), shopGold: document.getElementById('shop-gold'),
 
     btnPotHeal: document.getElementById('btn-pot-heal'), btnPotElixir: document.getElementById('btn-pot-elixir'),
-    
-    // Новые элементы для Магии
     btnMagic: document.getElementById('btn-magic'), spellbookModal: document.getElementById('spellbook-modal'),
-    btnCloseSpellbook: document.getElementById('btn-close-spellbook'), spellList: document.getElementById('spell-list'), spellbookSlots: document.getElementById('spellbook-slots')
+    btnCloseSpellbook: document.getElementById('btn-close-spellbook'), spellList: document.getElementById('spell-list'), spellbookSlots: document.getElementById('spellbook-slots'),
+    
+    // Новые элементы для Модалки Событий
+    eventModal: document.getElementById('event-modal'), eventTitle: document.getElementById('event-title'), eventDesc: document.getElementById('event-desc'), 
+    eventActions: document.getElementById('event-actions'), eventResult: document.getElementById('event-result'), btnCloseEvent: document.getElementById('btn-close-event')
 };
 
 const traitNames = { 'nimble': 'Вёрткий', 'undead_fortitude': 'Стойкость нежити', 'lifesteal': 'Вампиризм', 'regeneration': 'Регенерация', 'fire_resistance': 'Сопротивление огню', 'fire_immunity': 'Иммунитет к огню', 'reckless': 'Безрассудный' };
