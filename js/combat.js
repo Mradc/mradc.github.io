@@ -17,7 +17,6 @@ function getFireDamageTotal(diceCount, diceSides) {
     return total1;
 }
 
-// Новая функция пробития защиты!
 function applyFireResistance(dmg) {
     if (dmg <= 0) return 0;
     let hasRes = enemyState.current.traits.includes('fire_resistance');
@@ -74,6 +73,22 @@ export function activateArchon(isFree = false) {
     updateUI();
 }
 
+// НОВОЕ: Использование зелий в бою
+export function usePotion(type) {
+    player.bonusActions--;
+    if (type === 'heal') {
+        player.inventory.heal--;
+        player.hp = Math.min(player.maxHp, player.hp + 15);
+        log(`❤️ Вы выпиваете <b>Зелье лечения</b>! Восстановлено 15 ХП.`, 'player-turn');
+    } else if (type === 'elixir') {
+        player.inventory.elixir--;
+        player.spellSlots = Math.min(player.maxSpellSlots, player.spellSlots + 1);
+        player.currentGiantStrikeCharges = Math.min(player.maxGiantStrikeCharges, player.currentGiantStrikeCharges + 1);
+        log(`💧 Вы выпиваете <b>Эликсир духа</b>! Восстановлена 1 ячейка и 1 заряд Огн. удара.`, 'player-turn');
+    }
+    updateUI();
+}
+
 function startPlayerTurn() {
     if (!gameState.inCombat) return;
     gameState.turn = 'player'; gameState.isAnimating = false;
@@ -109,7 +124,6 @@ function performSingleStrike(atkTypeStr) {
         fireTotal += giantFireTotal;
     }
 
-    // Применяем резисты ко всему собранному урону от огня
     let appliedFireTotal = applyFireResistance(fireTotal);
 
     if (appliedFireTotal > 0) enemyState.current.hitByFire = true;
@@ -117,7 +131,6 @@ function performSingleStrike(atkTypeStr) {
 
     let hitMsg = `[${atkTypeStr}] ${isCrit ? '<span class="crit">КРИТ (20)!</span> ' : `Попадание (<span class="dice-roll">${d20}</span>+${player.hitMod}=${atkTotal}). `}`;
     
-    // Формируем текст так, чтобы игрок видел итоговый нанесенный урон
     if (player.level >= 3) {
          hitMsg += `<br>Урон: <span class="dmg-fire">${appliedFireTotal} огн.</span>`;
          if (giantFireTotal > 0) hitMsg += ` (включая Огн. удар)`;
@@ -195,7 +208,6 @@ export function startEnemyTurn() {
             if (ui.rebukeToggle.checked && player.spellSlots > 0 && totalDmg > 0 && enemyState.current.hp > 0) {
                 player.spellSlots--; ui.rebukeToggle.checked = false;
                 let rebukeDmg = getFireDamageTotal(player.slotLevel + 1, 10); 
-                // Возмездие тоже проходит через сопротивления
                 rebukeDmg = applyFireResistance(rebukeDmg);
                 enemyState.current.hp -= rebukeDmg;
                 log(`🌋 Вы применяете <b>Адское возмездие</b> (Реакция)! Враг получает <span class="dmg-fire">${rebukeDmg} огн.</span> урона.`, 'player-turn');
@@ -215,7 +227,12 @@ function checkCombatState() {
 
         player.xp += enemyState.current.xpGiven; 
         player.gold += enemyState.current.goldGiven;
-        log(`Получено ${enemyState.current.xpGiven} опыта и 💰 ${enemyState.current.goldGiven} золота.`, 'system');
+        
+        if (enemyState.current.goldCritMsg) {
+            log(enemyState.current.goldCritMsg, 'system');
+        } else {
+            log(`Получено ${enemyState.current.xpGiven} опыта и 💰 ${enemyState.current.goldGiven} золота.`, 'system');
+        }
         
         let levelUpMsgs = player.checkLevelUp();
         levelUpMsgs.forEach(msg => log(msg, 'levelup'));
