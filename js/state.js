@@ -75,29 +75,35 @@ const stageConfigs =[
 
 export const enemyState = {
     current: null,
-    generate(stage) {
+    generate(stage, isElite = false) {
         const config = stageConfigs[stage - 1];
         
+        const hpMult = isElite ? 1.5 : 1;
+        const goldMult = isElite ? 2 : 1;
+
         let actualGold = 0; let goldCritMsg = null;
         const luckRoll = roll(20);
         
         if (luckRoll === 20) {
-            actualGold = Math.floor(config.gold * (1.5 + Math.random())); 
+            actualGold = Math.floor((config.gold * goldMult) * (1.5 + Math.random())); 
             goldCritMsg = `<span style="color:#ffd700; text-shadow: 0 0 5px #d84b20;">🌟 ДЖЕКПОТ (d20: 20)! Враг обронил тугой кошель! (+${actualGold} 💰)</span>`;
         } else if (luckRoll === 1) {
             actualGold = 0;
-            goldCritMsg = `<span style="color:#9e9e9e;">💔 Неудача (d20: 1)... Пустые карманы. Враг оказался нищим. (0 💰)</span>`;
+            goldCritMsg = `<span style="color:#9e9e9e;">💔 Неудача (d20: 1)... Враг оказался нищим. (0 💰)</span>`;
         } else {
             const variance = 0.8 + (Math.random() * 0.4);
-            actualGold = Math.max(1, Math.floor(config.gold * variance));
+            actualGold = Math.max(1, Math.floor((config.gold * goldMult) * variance));
         }
 
         this.current = { 
-            name: config.name, maxHp: config.hp, hp: config.hp, 
-            ac: config.ac, hitMod: config.hit, dmgD: config.dmgD, dmgC: config.dmgC || 1, dmgMod: config.dmgMod, 
-            xpGiven: config.xp, goldGiven: actualGold, goldCritMsg: goldCritMsg, 
+            name: (isElite ? "Элитный " : "") + config.name, 
+            maxHp: Math.floor(config.hp * hpMult), hp: Math.floor(config.hp * hpMult), 
+            ac: config.ac + (isElite ? 1 : 0), hitMod: config.hit + (isElite ? 1 : 0), 
+            dmgD: config.dmgD, dmgC: config.dmgC || 1, dmgMod: config.dmgMod, 
+            xpGiven: isElite ? config.xp * 2 : config.xp, 
+            goldGiven: actualGold, goldCritMsg: goldCritMsg, 
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${config.seed}${stage}`,
-            traits: config.traits ||[],
+            traits: config.traits ||
             hitByFire: false, usedFortitude: false
         };
     }
