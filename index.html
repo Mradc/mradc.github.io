@@ -12,12 +12,11 @@
         <h1 style="color: var(--accent); margin-bottom: 5px; font-size: 28px;">Мантия Духа</h1>
         <h2 style="font-size: 16px; color: #aaa; margin-bottom: 25px;">The Vessel: Cataclysm (Fire)</h2>
         <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; text-align: left; font-size: 13px; max-width: 320px; line-height: 1.5;">
-            <p><b>Особенности по уровням:</b><br>
-               - Ур. 2: Адское возмездие (Реакция)<br>
-               - Ур. 3: Основные удары = <span class="dmg-fire">Огонь</span>.<br>
-               - Ур. 3: Форма Архонта (Пробивает сопр. и иммунитет!)<br>
-               - Ур. 6: Мощь Древних (1 и 2 огня = 3)</p>
-            <p style="color: #ffb74d; margin-top: 10px;">Внимание: покупайте зелья в магазине, чтобы лечиться прямо в бою!</p>
+            <p><b>Разблокировка магии:</b><br>
+               - Ур. 2: Адское возмездие и Заговоры<br>
+               - Ур. 3: Заклинание "Огненные ладони"<br>
+               - Ур. 9: Заклинание "Огненный шар"</p>
+            <p style="color: #ffb74d; margin-top: 10px;">Совет: Кастуя магию, вы всё ещё можете нанести удар Бонусным действием!</p>
         </div>
         <button id="btn-start" style="max-width: 200px;">Начать Игру</button>
     </div>
@@ -69,11 +68,14 @@
             
             <div id="combat-actions">
                 <div class="action-row">
-                    <button class="btn-bonus btn-archon hidden" id="btn-archon">Форма Архонта</button>
-                    <button class="btn-action" id="btn-attack-main" style="grid-column: span 2;">Атака (Основная)</button>
+                    <button class="btn-action" id="btn-attack-main" style="grid-column: span 2;">Атака (Осн.)</button>
+                    <button class="btn-action hidden" id="btn-magic" style="border-color: #ba68c8; color: #ba68c8;">🪄 Магия</button>
                 </div>
                 
-                <!-- Новая панель инвентаря -->
+                <div class="action-row" style="margin-top: 8px;">
+                    <button class="btn-bonus btn-archon hidden" id="btn-archon" style="grid-column: span 2;">Форма Архонта</button>
+                </div>
+
                 <div class="action-row" style="margin-top: 8px;">
                     <button class="btn-bonus" id="btn-pot-heal" style="border-color: #e53935; color: #e53935; font-size: 12px;">❤️ Зелье (0)</button>
                     <button class="btn-bonus hidden" id="btn-pot-elixir" style="border-color: #64b5f6; color: #64b5f6; font-size: 12px;">💧 Эликсир (0)</button>
@@ -109,15 +111,27 @@
             </div>
         </div>
 
+        <!-- Окно Магазина -->
         <div id="shop-modal" class="modal-overlay hidden">
             <div class="shop-window">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
                     <h2 style="font-size: 18px; color: #ffd700;">Лавка Торговца</h2>
                     <span id="shop-gold" style="color: #ffd700; font-weight: bold;">💰 0</span>
                 </div>
-                <div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;">
-                </div>
+                <div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div>
                 <button id="btn-close-shop" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Окно Книги Заклинаний -->
+        <div id="spellbook-modal" class="modal-overlay hidden">
+            <div class="shop-window" style="border-color: #ba68c8;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+                    <h2 style="font-size: 18px; color: #ba68c8;">Заклинания</h2>
+                    <span id="spellbook-slots" style="color: #64b5f6; font-weight: bold;">Ячейки: 0/0</span>
+                </div>
+                <div id="spell-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div>
+                <button id="btn-close-spellbook" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
             </div>
         </div>
     </div>
