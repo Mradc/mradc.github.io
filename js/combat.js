@@ -1,6 +1,7 @@
 import { player, enemyState, gameState } from './state.js';
 import { ui, updateUI, log, renderNewEnemy, showLoseScreen, showWinScreen } from './ui.js';
 import { roll, TIMINGS } from './utils.js';
+import { renderPaths } from './map.js'; // <-- НОВЫЙ ИМПОРТ КАРТЫ ПУТЕЙ
 
 function getFireDamageTotal(diceCount, diceSides) {
     let calcRoll = () => {
@@ -33,11 +34,14 @@ function applyFireResistance(dmg) {
     return finalDmg;
 }
 
-export function startGame() { ui.menu.classList.add('hidden'); ui.over.classList.add('hidden'); ui.game.classList.remove('hidden'); ui.log.innerHTML = ''; player.reset(); gameState.stage = 1; startStage(); }
-export function startNextStage() { gameState.stage++; startStage(); }
+export function startGame() { 
+    ui.menu.classList.add('hidden'); ui.over.classList.add('hidden'); ui.game.classList.remove('hidden'); ui.log.innerHTML = ''; 
+    player.reset(); gameState.stage = 1; startStage(false); 
+}
 
-function startStage() {
-    gameState.isAnimating = false; enemyState.generate(gameState.stage); renderNewEnemy();
+// Теперь startStage принимает параметр isElite
+export function startStage(isElite = false) {
+    gameState.isAnimating = false; enemyState.generate(gameState.stage, isElite); renderNewEnemy();
     gameState.inCombat = true; player.archonActive = false; player.tempHp = 0; updateUI();
     log(`<b>--- Битва ${gameState.stage} / ${gameState.maxStage}: ${enemyState.current.name} ---</b>`, 'system');
     if (player.level >= 7) activateArchon(true); 
@@ -73,41 +77,24 @@ export function castSpell(spell) {
     }
     
     player.actions--;
-    
-    // ВАЖНО: Разрешаем удар бонусным действием после магии ТОЛЬКО с 5-го уровня (правило Extra Attack)
-    if (player.level >= 5) {
-        player.attackedThisTurn = true; 
-    }
+    if (player.level >= 5) player.attackedThisTurn = true; 
     
     gameState.isAnimating = true; updateUI();
 
     setTimeout(() => {
-        let isSaved = false;
-        let damage = 0;
-        let dmgType = 'огн.';
-        
-        const saveRoll = roll(20); 
-        const saveTotal = saveRoll + enemyState.current.dmgMod;
+        let isSaved = false; let damage = 0; let dmgType = 'огн.';
+        const saveRoll = roll(20); const saveTotal = saveRoll + enemyState.current.dmgMod;
         isSaved = saveTotal >= player.spellSaveDc;
 
-        if (isSaved) {
-            log(`[${spell.name}] Враг преуспел в спасброске (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
-        } else {
-            log(`[${spell.name}] Враг провалил спасбросок (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
-        }
+        if (isSaved) log(`[${spell.name}] Враг преуспел в спасброске (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
+        else log(`[${spell.name}] Враг провалил спасбросок (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
 
         if (spell.id === 'create_bonfire') {
-            if (!isSaved) {
-                let diceCount = player.level >= 5 ? 2 : 1;
-                damage = getFireDamageTotal(diceCount, 8); // Урон костра = d8
-            }
+            if (!isSaved) damage = getFireDamageTotal(player.level >= 5 ? 2 : 1, 8); 
         } else if (spell.id === 'thunderwave') {
-            damage = roll(player.slotLevel + 1, 8);
-            if (isSaved) damage = Math.floor(damage / 2);
-            dmgType = 'грома';
+            damage = roll(player.slotLevel + 1, 8); if (isSaved) damage = Math.floor(damage / 2); dmgType = 'грома';
         } else if (spell.id === 'fireball') {
-            damage = getFireDamageTotal(8, 6);
-            if (isSaved) damage = Math.floor(damage / 2);
+            damage = getFireDamageTotal(8, 6); if (isSaved) damage = Math.floor(damage / 2);
         }
 
         if (damage > 0) {
@@ -120,9 +107,7 @@ export function castSpell(spell) {
                 enemyState.current.hp -= damage;
                 log(`Урон: <span style="color:#ba68c8;">${damage} грома</span>`, 'player-turn');
             }
-        } else {
-            log(`Урон не нанесен.`, 'player-turn');
-        }
+        } else log(`Урон не нанесен.`, 'player-turn');
         
         gameState.isAnimating = false; checkCombatState();
     }, TIMINGS.strikeDelay);
@@ -248,7 +233,12 @@ function checkCombatState() {
         
         let levelUpMsgs = player.checkLevelUp(); levelUpMsgs.forEach(msg => log(msg, 'levelup'));
         
-        log(`<i>Бой окончен. Отдохните или загляните в магазин перед следующей битвой.</i>`, 'system'); updateUI(); 
+        log(`<i>Выберите следующий путь:</i>`, 'system'); 
+        updateUI(); 
+        
+        // НОВОЕ: Генерируем кнопки пути на панели привала
+        renderPaths(); 
+        
         return true;
     } else if (player.hp <= 0) {
         gameState.inCombat = false; setTimeout(() => showLoseScreen(gameState.stage, player.level), TIMINGS.gameOver); return true;
