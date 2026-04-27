@@ -73,44 +73,55 @@ export function castSpell(spell) {
     }
     
     player.actions--;
-    player.attackedThisTurn = true; // Заклинание Сосуда позволяет ударить бонусом
+    
+    // ВАЖНО: Разрешаем удар бонусным действием после магии ТОЛЬКО с 5-го уровня (правило Extra Attack)
+    if (player.level >= 5) {
+        player.attackedThisTurn = true; 
+    }
     
     gameState.isAnimating = true; updateUI();
 
     setTimeout(() => {
-        if (spell.id === 'firebolt') {
-            const d20 = roll(20); const atkTotal = d20 + player.hitMod; const isCrit = d20 === 20;
-            const isMiss = d20 === 1 || (!isCrit && atkTotal < enemyState.current.ac);
-            
-            if (isMiss && !isCrit) log(`[${spell.name}] Промах! <span class="dice-roll">${d20}</span>+${player.hitMod} vs AC ${enemyState.current.ac}`, 'player-turn');
-            else {
+        let isSaved = false;
+        let damage = 0;
+        let dmgType = 'огн.';
+        
+        const saveRoll = roll(20); 
+        const saveTotal = saveRoll + enemyState.current.dmgMod;
+        isSaved = saveTotal >= player.spellSaveDc;
+
+        if (isSaved) {
+            log(`[${spell.name}] Враг преуспел в спасброске (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
+        } else {
+            log(`[${spell.name}] Враг провалил спасбросок (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
+        }
+
+        if (spell.id === 'create_bonfire') {
+            if (!isSaved) {
                 let diceCount = player.level >= 5 ? 2 : 1;
-                if (isCrit) diceCount *= 2;
-                let fireTotal = getFireDamageTotal(diceCount, 10);
-                let applied = applyFireResistance(fireTotal);
+                damage = getFireDamageTotal(diceCount, 8); // Урон костра = d8
+            }
+        } else if (spell.id === 'thunderwave') {
+            damage = roll(player.slotLevel + 1, 8);
+            if (isSaved) damage = Math.floor(damage / 2);
+            dmgType = 'грома';
+        } else if (spell.id === 'fireball') {
+            damage = getFireDamageTotal(8, 6);
+            if (isSaved) damage = Math.floor(damage / 2);
+        }
+
+        if (damage > 0) {
+            if (dmgType === 'огн.') {
+                let applied = applyFireResistance(damage);
                 if (applied > 0) enemyState.current.hitByFire = true;
                 enemyState.current.hp -= applied;
-                log(`[${spell.name}] ${isCrit ? '<span class="crit">КРИТ!</span> ' : `Попадание.`}<br>Урон: <span class="dmg-fire">${applied} огн.</span>`, 'player-turn');
-            }
-        } else if (spell.id === 'burning_hands' || spell.id === 'fireball') {
-            const isFireball = spell.id === 'fireball';
-            const diceCount = isFireball ? 8 : (player.slotLevel + 2);
-            
-            const saveRoll = roll(20); const saveTotal = saveRoll + enemyState.current.dmgMod;
-            const isSaved = saveTotal >= player.spellSaveDc;
-            
-            let fireTotal = getFireDamageTotal(diceCount, 6);
-            if (isSaved) {
-                fireTotal = Math.floor(fireTotal / 2);
-                log(`[${spell.name}] Враг преуспел в спасброске ЛОВ (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
+                log(`Урон: <span class="dmg-fire">${applied} огн.</span>`, 'player-turn');
             } else {
-                log(`[${spell.name}] Враг провалил спасбросок ЛОВ (<span class="dice-roll">${saveRoll}</span>+${enemyState.current.dmgMod}=${saveTotal} vs Сл ${player.spellSaveDc}).`, 'player-turn');
+                enemyState.current.hp -= damage;
+                log(`Урон: <span style="color:#ba68c8;">${damage} грома</span>`, 'player-turn');
             }
-            
-            let applied = applyFireResistance(fireTotal);
-            if (applied > 0) enemyState.current.hitByFire = true;
-            enemyState.current.hp -= applied;
-            log(`Урон: <span class="dmg-fire">${applied} огн.</span>`, 'player-turn');
+        } else {
+            log(`Урон не нанесен.`, 'player-turn');
         }
         
         gameState.isAnimating = false; checkCombatState();
