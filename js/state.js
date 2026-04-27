@@ -14,7 +14,7 @@ export const player = {
     get dmgDie() { return this.level >= 17 ? 12 : (this.level >= 11 ? 10 : (this.level >= 5 ? 8 : 6)); }, 
     get attacksPerAction() { return this.level >= 5 ? 2 : 1; }, 
     get xpNeeded() { return xpThresholds[this.level] || 999999; },
-
+    get spellSaveDc() { return 8 + this.pb + this.chaMod; },
     get maxGiantStrikeCharges() { return this.pb; }, currentGiantStrikeCharges: 2,
     get maxSpellSlots() { return this.level >= 2 ? 2 : 0; }, spellSlots: 0,
     get slotLevel() { return slotLevelByVesselLevel[this.level] || 1; },
