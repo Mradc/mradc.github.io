@@ -1,6 +1,7 @@
 import { player, enemyState, gameState } from './state.js';
 import { xpThresholds } from './utils.js';
 import { sfx } from './audio.js';
+import { clearSave, saveStats } from './storage.js';
 
 export const ui = {
     menu: document.getElementById('menu-screen'), game: document.getElementById('game-screen'), over: document.getElementById('game-over-screen'), log: document.getElementById('combat-log'),
@@ -170,10 +171,14 @@ export function showLoseScreen(stage, level) {
     ui.game.classList.add('hidden'); ui.over.classList.remove('hidden');
     ui.gameOverTitle.innerText = "Вы Погибли"; ui.gameOverTitle.style.color = "var(--hp-color)";
     ui.gameOverDesc.innerHTML = `Вы дошли до <b>${stage} стадии</b> (Уровень ${level}).<br>Ваш дух сломлен.`;
+    clearSave();
+    saveStats(stage, false);
 }
 
 export function showWinScreen() {
     ui.game.classList.add('hidden'); ui.over.classList.remove('hidden');
     ui.gameOverTitle.innerText = "Легендарная Победа!"; ui.gameOverTitle.style.color = "var(--radiant-color)";
     ui.gameOverDesc.innerText = "Лорд Бездны уничтожен силой вашего Духа. Вы прошли игру!";
+    clearSave();
+    saveStats(16, true);
 }
