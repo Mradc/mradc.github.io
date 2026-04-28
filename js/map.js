@@ -40,6 +40,7 @@ const events =[
                 text: "Помочь (Отдать Зелье Лечения)",
                 req: () => player.inventory.heal > 0,
                 action: () => {
+                    sfx.coin();
                     player.inventory.heal--;
                     player.gold += 120;
                     return { msg: "Гоблин выпивает зелье и в благодарность отсыпает 120 золота!", color: '#ffd700' };
@@ -51,6 +52,7 @@ const events =[
                 action: () => {
                     const total = roll(20) + player.chaMod; // У Сосуда Атлетика идет от Харизмы
                     if (total >= 12) {
+                        sfx.coin();
                         player.gold += 80;
                         return { msg: `Успех (${total})! Вы отбираете 80 золота.`, color: '#ffd700' };
                     } else {
@@ -75,6 +77,7 @@ const events =[
                 req: null,
                 action: () => {
                     if (Math.random() > 0.3) {
+                        sfx.heal()
                         player.hp = player.maxHp;
                         player.spellSlots = player.maxSpellSlots;
                         return { msg: "Вода освежает! Вы полностью восстановили ХП и Ячейки заклинаний.", color: '#64b5f6' };
