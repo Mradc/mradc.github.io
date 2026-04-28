@@ -27,7 +27,7 @@ function applyFireResistance(dmg) {
 export function startGame() { ui.menu.classList.add('hidden'); ui.over.classList.add('hidden'); ui.game.classList.remove('hidden'); ui.log.innerHTML = ''; player.reset(); gameState.stage = 1; startStage(false); }
 export function startNextStage() { gameState.stage++; startStage(); }
 
-function startStage(isElite = false) {
+export function startStage(isElite = false) {
     gameState.isAnimating = false; enemyState.generate(gameState.stage, isElite); renderNewEnemy();
     gameState.inCombat = true; player.archonActive = false; player.tempHp = 0; updateUI();
     log(`<b>--- Битва ${gameState.stage} / ${gameState.maxStage}: ${enemyState.current.name} ---</b>`, 'system');
