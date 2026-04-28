@@ -30,7 +30,22 @@ export const player = {
         this.maxHp = 10 + this.conMod; this.hp = this.maxHp; this.tempHp = 0;
         this.currentGiantStrikeCharges = this.maxGiantStrikeCharges;
         this.spellSlots = this.maxSpellSlots; this.archonActive = false;
-        this.inventory = { heal: 0, elixir: 0 }; // Сброс инвентаря
+        this.inventory = { heal: 0, elixir: 0 };
+    },
+
+    loadData: function(data) {
+        this.level = data.level; this.xp = data.xp; this.gold = data.gold;
+        this.bonusAc = data.bonusAc; this.maxHp = data.maxHp; this.hp = data.hp;
+        this.currentGiantStrikeCharges = data.currentGiantStrikeCharges;
+        this.spellSlots = data.spellSlots; this.inventory = data.inventory;
+        
+        // Харизма пересчитывается в зависимости от уровня
+        this.conMod = 3;
+        this.chaMod = 3;
+        if (this.level >= 4) this.chaMod += 1;
+        if (this.level >= 8) this.chaMod += 1;
+        
+        this.archonActive = false; this.tempHp = 0; // Врем. баффы сбрасываем
     },
 
     checkLevelUp: function() {
