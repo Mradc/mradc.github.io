@@ -3,7 +3,7 @@ import { ui, updateUI, log, renderNewEnemy, showLoseScreen, showWinScreen, spawn
 import { roll, TIMINGS } from './utils.js';
 import { renderPaths } from './map.js';
 import { sfx } from './audio.js';
-import { saveGame } from './storage.js';
+import { saveGame } from './storage.js'; // <-- Добавлено
 
 function getFireDamageTotal(diceCount, diceSides) {
     let calcRoll = () => {
@@ -27,32 +27,18 @@ function applyFireResistance(dmg) {
     let finalDmg = dmg;
 
     if (player.archonActive) {
-        if (hasImm) { 
-            finalDmg = Math.floor(finalDmg / 2); 
-            log(`🔥 <b>Мощь Архонта:</b> Иммунитет к огню пробит!`, 'system'); 
-        } else if (hasRes) { 
-            log(`🔥 <b>Мощь Архонта:</b> Сопротивление огню проигнорировано!`, 'system'); 
-        }
+        if (hasImm) { finalDmg = Math.floor(finalDmg / 2); log(`🔥 <b>Мощь Архонта:</b> Иммунитет к огню пробит!`, 'system'); } 
+        else if (hasRes) { log(`🔥 <b>Мощь Архонта:</b> Сопротивление огню проигнорировано!`, 'system'); }
     } else {
-        if (hasImm) { 
-            finalDmg = 0; 
-            log(`🛡️ Иммунитет к огню! Огненный урон полностью поглощен.`, 'system'); 
-        } else if (hasRes) { 
-            finalDmg = Math.floor(finalDmg / 2); 
-            log(`🛡️ Сопротивление огню! Урон снижен вдвое.`, 'system'); 
-        }
+        if (hasImm) { finalDmg = 0; log(`🛡️ Иммунитет к огню! Огненный урон полностью поглощен.`, 'system'); } 
+        else if (hasRes) { finalDmg = Math.floor(finalDmg / 2); log(`🛡️ Сопротивление огню! Урон снижен вдвое.`, 'system'); }
     }
     return finalDmg;
 }
 
 export function startGame() { 
     ui.menu.classList.add('hidden'); ui.over.classList.add('hidden'); ui.game.classList.remove('hidden'); ui.log.innerHTML = ''; 
-    player.reset(); gameState.stage = 1; startStage(false); 
-}
-
-export function startNextStage() {
-    gameState.stage++;
-    startStage(false);
+    player.reset(); gameState.stage = 1; gameState.paths =[]; startStage(false); 
 }
 
 export function startStage(isElite = false) {
@@ -67,26 +53,20 @@ export function startStage(isElite = false) {
 
 export function activateArchon(isFree = false) {
     if (!isFree) player.bonusActions--; 
-    player.archonActive = true; 
-    player.tempHp += (2 * player.level);
-    sfx.fire(); // Звук вспышки!
-    log(`🔥 Вы принимаете <b>Форму Архонта</b>! Получено <span class="thp-text">${2*player.level} Врем. ХП</span>.`, 'system'); 
+    player.archonActive = true; player.tempHp += (2 * player.level);
+    sfx.fire(); log(`🔥 Вы принимаете <b>Форму Архонта</b>! Получено <span class="thp-text">${2*player.level} Врем. ХП</span>.`, 'system'); 
     updateUI();
 }
 
 export function usePotion(type) {
-    player.bonusActions--;
-    sfx.heal(); // Звук глотка зелья
+    player.bonusActions--; sfx.heal();
     if (type === 'heal') { 
-        player.inventory.heal--; 
-        player.hp = Math.min(player.maxHp, player.hp + 15); 
-        spawnFloatingText(ui.playerAvatar, "+15", "#4caf50"); // Зеленый текст хила
+        player.inventory.heal--; player.hp = Math.min(player.maxHp, player.hp + 15); 
+        spawnFloatingText(ui.playerAvatar, "+15", "#4caf50"); 
         log(`❤️ Вы выпиваете <b>Зелье лечения</b>! Восстановлено 15 ХП.`, 'player-turn'); 
     } else if (type === 'elixir') { 
-        player.inventory.elixir--; 
-        player.spellSlots = Math.min(player.maxSpellSlots, player.spellSlots + 1); 
-        player.currentGiantStrikeCharges = Math.min(player.maxGiantStrikeCharges, player.currentGiantStrikeCharges + 1); 
-        spawnFloatingText(ui.playerAvatar, "Мана!", "#64b5f6"); // Синий текст маны
+        player.inventory.elixir--; player.spellSlots = Math.min(player.maxSpellSlots, player.spellSlots + 1); player.currentGiantStrikeCharges = Math.min(player.maxGiantStrikeCharges, player.currentGiantStrikeCharges + 1); 
+        spawnFloatingText(ui.playerAvatar, "Мана!", "#64b5f6"); 
         log(`💧 Вы выпиваете <b>Эликсир духа</b>! Восст. 1 ячейка и 1 Огн. удар.`, 'player-turn'); 
     }
     updateUI();
@@ -144,9 +124,7 @@ export function castSpell(spell) {
                 log(`Урон: <span style="color:#ba68c8;">${damage} грома</span>`, 'player-turn');
             }
         } else {
-            sfx.miss();
-            spawnFloatingText(ui.enemyAvatar, "Блок", "#9e9e9e");
-            log(`Урон не нанесен.`, 'player-turn');
+            sfx.miss(); spawnFloatingText(ui.enemyAvatar, "Блок", "#9e9e9e"); log(`Урон не нанесен.`, 'player-turn');
         }
         
         gameState.isAnimating = false; checkCombatState();
@@ -187,7 +165,6 @@ function performSingleStrike(atkTypeStr) {
     let totalDone = radTotal + appliedFireTotal;
     enemyState.current.hp -= totalDone;
 
-    // ВИЗУАЛ И ЗВУК
     triggerFlash(ui.enemyAvatar);
     if (isCrit) { sfx.crit(); triggerShake(); spawnFloatingText(ui.enemyAvatar, `КРИТ! -${totalDone}`, "#f44336"); }
     else { sfx.hit(); spawnFloatingText(ui.enemyAvatar, `-${totalDone}`, (player.level >= 3 ? "#e64a19" : "#fbc02d")); }
@@ -259,7 +236,6 @@ export function startEnemyTurn() {
             let totalDmg = roll(enemyState.current.dmgD, enemyState.current.dmgC) + (isCrit ? roll(enemyState.current.dmgD, enemyState.current.dmgC) : 0) + enemyState.current.dmgMod;
             takePlayerDamage(totalDmg);
             
-            // ВИЗУАЛ ПОЛУЧЕНИЯ УРОНА ИГРОКОМ
             triggerFlash(ui.playerAvatar);
             if (isCrit) { sfx.crit(); triggerShake(); spawnFloatingText(ui.playerAvatar, `КРИТ! -${totalDmg}`, "#f44336"); }
             else { sfx.hit(); spawnFloatingText(ui.playerAvatar, `-${totalDmg}`, "#d32f2f"); }
@@ -292,24 +268,24 @@ function checkCombatState() {
     updateUI();
     if (enemyState.current.hp <= 0) {
         gameState.inCombat = false; gameState.isAnimating = true; 
-        sfx.coin(); // Звук монет!
+        sfx.coin(); 
         log(`<b>${enemyState.current.name} повержен!</b>`, 'system');
         if (gameState.stage === gameState.maxStage) { setTimeout(showWinScreen, TIMINGS.gameOver); return true; }
 
         player.xp += enemyState.current.xpGiven; player.gold += enemyState.current.goldGiven;
-        
         if (enemyState.current.goldCritMsg) { log(enemyState.current.goldCritMsg, 'system'); } 
         else { log(`Получено ${enemyState.current.xpGiven} опыта и 💰 ${enemyState.current.goldGiven} золота.`, 'system'); }
         
         let levelUpMsgs = player.checkLevelUp(); 
-        if (levelUpMsgs.length > 0) sfx.levelup(); // Звук левелапа!
+        if (levelUpMsgs.length > 0) sfx.levelup();
         levelUpMsgs.forEach(msg => log(msg, 'levelup'));
         
         log(`<i>Выберите следующий путь:</i>`, 'system'); 
         updateUI(); 
         
-        renderPaths(); 
-        saveGame();
+        renderPaths(true); // Генерируем пути
+        saveGame();        // СОХРАНЯЕМ ВЕСЬ ПРОГРЕСС И ЛОГИ И ПУТИ И ВРАГА!
+        
         return true;
     } else if (player.hp <= 0) {
         gameState.inCombat = false; setTimeout(() => showLoseScreen(gameState.stage, player.level), TIMINGS.gameOver); return true;
