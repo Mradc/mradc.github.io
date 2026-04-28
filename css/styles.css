@@ -80,3 +80,54 @@ input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
 .shop-item-desc { font-size: 11px; color: #aaa; }
 .btn-buy { width: auto; padding: 6px 12px; font-size: 13px; border-color: #ffd700; color: #ffd700; }
 .btn-buy:not(:disabled):hover { background: rgba(255, 215, 0, 0.1); }
+
+/* --- JUICE (ВИЗУАЛЬНЫЕ ЭФФЕКТЫ) --- */
+
+/* Всплывающий текст урона/лечения */
+.floating-text {
+    position: absolute;
+    font-weight: bold;
+    font-size: 24px;
+    font-family: 'Cinzel', serif;
+    pointer-events: none;
+    z-index: 9999;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    animation: floatUp 1s ease-out forwards;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes floatUp {
+    0% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    30% { transform: translate(-50%, -25px) scale(1.3); }
+    100% { opacity: 0; transform: translate(-50%, -60px) scale(1); }
+}
+
+/* Вспышка при получении урона */
+.flash-red {
+    animation: flashRedAnim 0.3s ease-out;
+}
+
+@keyframes flashRedAnim {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.5) sepia(1) hue-rotate(330deg) saturate(300%); }
+    100% { filter: brightness(1); }
+}
+
+/* Тряска экрана (Криты и Боссы) */
+.shake {
+    animation: shakeAnim 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shakeAnim {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-2px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); }
+}
