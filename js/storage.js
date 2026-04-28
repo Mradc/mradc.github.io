@@ -1,4 +1,5 @@
-import { player, gameState } from './state.js';
+import { player, enemyState, gameState } from './state.js';
+import { ui } from './ui.js';
 
 export function saveGame() {
     const data = {
@@ -8,7 +9,10 @@ export function saveGame() {
             currentGiantStrikeCharges: player.currentGiantStrikeCharges,
             spellSlots: player.spellSlots, inventory: player.inventory
         },
-        stage: gameState.stage
+        stage: gameState.stage,
+        paths: gameState.paths,
+        enemy: enemyState.current,
+        logHTML: ui.log.innerHTML // Сохраняем весь текст и цветные логи!
     };
     localStorage.setItem('vessel_save', JSON.stringify(data));
 }
@@ -17,8 +21,17 @@ export function loadGame() {
     const save = localStorage.getItem('vessel_save');
     if (!save) return false;
     const data = JSON.parse(save);
+    
     player.loadData(data.player);
     gameState.stage = data.stage;
+    gameState.paths = data.paths ||[];
+    enemyState.current = data.enemy || null;
+    
+    if (data.logHTML) {
+        ui.log.innerHTML = data.logHTML;
+        setTimeout(() => { ui.log.scrollTop = ui.log.scrollHeight; }, 10);
+    }
+    
     return true;
 }
 
