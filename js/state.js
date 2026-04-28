@@ -1,6 +1,6 @@
 import { roll, xpThresholds, slotLevelByVesselLevel } from './utils.js';
 
-export const gameState = { stage: 1, maxStage: 16, turn: 'player', inCombat: false, isAnimating: false };
+export const gameState = { stage: 1, maxStage: 16, turn: 'player', inCombat: false, isAnimating: false, paths:[] };
 
 export const player = {
     level: 1, xp: 0, gold: 0,
