@@ -54,7 +54,8 @@ export function renderShop() {
                 item.buy();
                 log(`🛒 Куплено: <b>${item.name}</b> за ${item.price} золота.`, 'system');
                 updateUI();
-                renderShop(); 
+                renderShop();
+                saveGame();
             }
         });
     });
