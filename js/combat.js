@@ -3,6 +3,7 @@ import { ui, updateUI, log, renderNewEnemy, showLoseScreen, showWinScreen, spawn
 import { roll, TIMINGS } from './utils.js';
 import { renderPaths } from './map.js';
 import { sfx } from './audio.js';
+import { saveGame } from './storage.js';
 
 function getFireDamageTotal(diceCount, diceSides) {
     let calcRoll = () => {
@@ -308,7 +309,7 @@ function checkCombatState() {
         updateUI(); 
         
         renderPaths(); 
-        
+        saveGame();
         return true;
     } else if (player.hp <= 0) {
         gameState.inCombat = false; setTimeout(() => showLoseScreen(gameState.stage, player.level), TIMINGS.gameOver); return true;
