@@ -2,6 +2,7 @@ import { player, gameState } from './state.js';
 import { roll } from './utils.js';
 import { ui, updateUI, log, showLoseScreen } from './ui.js';
 import { startStage } from './combat.js';
+import { sfx } from './audio.js';
 
 const events =[
     {
