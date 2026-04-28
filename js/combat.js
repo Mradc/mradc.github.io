@@ -40,20 +40,39 @@ function applyElementResistance(dmg, elementId) {
 
 export function startGame() { 
     player.subclass = ui.subclassSelect.value;
-    ui.menu.classList.add('hidden'); ui.over.classList.add('hidden'); ui.game.classList.remove('hidden'); ui.log.innerHTML = ''; 
-    player.reset(); gameState.stage = 1; startStage(false); 
+    ui.menu.classList.add('hidden'); 
+    ui.over.classList.add('hidden'); 
+    ui.game.classList.remove('hidden'); 
+    ui.log.innerHTML = ''; 
+    
+    player.reset(); 
+    gameState.stage = 1; 
+    
+    startStage(false); 
 }
 
-export function startNextStage() { gameState.stage++; startStage(); }
-
-function startStage() {
-    gameState.isAnimating = false; enemyState.current = null;
-    enemyState.generate(gameState.stage, false); renderNewEnemy();
-    gameState.inCombat = true; player.archonActive = false; player.tempHp = 0; updateUI();
+// ДОБАВЛЕН EXPORT и параметр isElite
+export function startStage(isElite = false) {
+    gameState.isAnimating = false; 
+    enemyState.current = null;
+    
+    // Передаем isElite в генератор, чтобы боты становились сильнее
+    enemyState.generate(gameState.stage, isElite); 
+    renderNewEnemy();
+    
+    gameState.inCombat = true; 
+    player.archonActive = false; 
+    player.tempHp = 0; 
+    updateUI();
+    
     log(`<b>--- Битва ${gameState.stage} / ${gameState.maxStage}: ${enemyState.current.name} ---</b>`, 'system');
+    
     if (player.level >= 7) activateArchon(true); 
-    const pInit = roll(20) + player.dexMod; const eInit = roll(20) + (Math.floor(Math.random() * 4)); 
+    
+    const pInit = roll(20) + player.dexMod; 
+    const eInit = roll(20) + (Math.floor(Math.random() * 4)); 
     log(`Инициатива: Вы <span class="dice-roll">${pInit}</span> vs Враг <span class="dice-roll">${eInit}</span>`, 'system');
+    
     pInit >= eInit ? startPlayerTurn() : startEnemyTurn();
 }
 
