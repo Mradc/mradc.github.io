@@ -3,7 +3,9 @@
 :root {
     --bg-dark: #121212; --panel-bg: #1e1e24; --border-color: #3a3a45; --text-light: #e0e0e0;
     --accent: #d84b20; --hp-color: #d32f2f; --thp-color: #1976d2; --xp-color: #388e3c;
-    --radiant-color: #fbc02d; --fire-color: #e64a19; --enemy-color: #7b1fa2; --levelup-color: #ffd700;
+    --levelup-color: #ffd700; --enemy-color: #7b1fa2;
+    /* Базовый цвет подкласса (меняется через JS) */
+    --sub-color: #e64a19; 
 }
 
 body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); color: var(--text-light); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -17,7 +19,7 @@ button:active:not(:disabled) { background-color: var(--accent); color: #fff; tra
 button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-action { border-left: 4px solid #4caf50; } .btn-bonus { border-left: 4px solid #ff9800; }
-.btn-archon { border-left: 4px solid #fbc02d; background: linear-gradient(90deg, rgba(216,75,32,0.2) 0%, rgba(30,30,36,1) 100%); }
+.btn-archon { border-left: 4px solid var(--sub-color); background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(30,30,36,1) 100%); }
 .btn-end { border-left: 4px solid #9e9e9e; background-color: #2a2a35;}
 
 #game-screen { display: flex; flex-direction: column; height: 100%; justify-content: space-between; }
@@ -49,20 +51,19 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .log-entry.levelup { border: 2px solid var(--levelup-color); background: rgba(255, 215, 0, 0.1); text-align: center; font-weight: bold; color: var(--levelup-color);}
 
 .dice-roll { color: #fff; font-weight: bold; background: #333; padding: 2px 6px; border-radius: 4px; }
-.dmg-radiant { color: var(--radiant-color); font-weight: bold; text-shadow: 0 0 4px rgba(251,192,45,0.5); }
-.dmg-fire { color: var(--fire-color); font-weight: bold; text-shadow: 0 0 4px rgba(230,74,25,0.5); }
+.dmg-sub { color: var(--sub-color); font-weight: bold; text-shadow: 0 0 4px var(--sub-color); }
 .crit { color: #f44336; font-weight: bold; text-transform: uppercase; }
 
 #action-panel { background-color: var(--panel-bg); padding: 10px 15px 15px 15px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #333; }
 .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 .toggle-box { display: flex; align-items: center; justify-content: space-between; background: #2a2a35; padding: 8px 10px; border-radius: 6px; font-size: 13px; border: 1px solid var(--border-color); }
-.toggle-box.fire { border-color: var(--fire-color); } .toggle-box.magic { border-color: #64b5f6; }
+.toggle-box.fire { border-color: var(--sub-color); } .toggle-box.magic { border-color: #64b5f6; }
 .switch { position: relative; display: inline-block; width: 36px; height: 18px; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 20px; }
 .slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider.fire-slider { background-color: var(--fire-color); }
+input:checked + .slider.fire-slider { background-color: var(--sub-color); }
 input:checked + .slider.magic-slider { background-color: #64b5f6; }
 input:checked + .slider:before { transform: translateX(18px); }
 input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
@@ -71,7 +72,6 @@ input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 .dot.action { background-color: #4caf50; } .dot.bonus { background-color: #ff9800; } .dot.inactive { background-color: #555; }
 
-/* Стили Магазина */
 .modal-overlay { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; justify-content: center; align-items: center; padding: 20px; }
 .shop-window { background: var(--panel-bg); border: 2px solid #ffd700; border-radius: 8px; width: 100%; max-width: 400px; padding: 15px; display: flex; flex-direction: column; }
 .shop-item { display: flex; justify-content: space-between; align-items: center; background: #2a2a35; padding: 10px; border-radius: 6px; border: 1px solid #333;}
