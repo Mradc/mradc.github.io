@@ -3,6 +3,7 @@ import { roll } from './utils.js';
 import { ui, updateUI, log, showLoseScreen } from './ui.js';
 import { startStage } from './combat.js';
 import { sfx } from './audio.js';
+import { saveGame } from './storage.js';
 
 const events =[
     {
@@ -166,6 +167,8 @@ function startEvent() {
             if (player.hp <= 0) {
                 ui.eventModal.classList.add('hidden');
                 showLoseScreen(gameState.stage, player.level);
+            } else {
+                saveGame(); // <-- ДОБАВИТЬ ЭТУ СТРОКУ
             }
         };
         ui.eventActions.appendChild(btn);
@@ -183,12 +186,14 @@ function startTreasure() {
     const btn = document.createElement('button');
     btn.className = 'btn-action'; btn.style.borderColor = '#ffd700'; btn.innerText = "Открыть";
     btn.onclick = () => {
+        sfx.coin();
         const gold = 40 + roll(40);
         player.gold += gold;
         ui.eventActions.classList.add('hidden');
         ui.eventResult.innerHTML = `Вы нашли 💰 ${gold} золота!`; ui.eventResult.style.color = '#ffd700';
         ui.eventResult.classList.remove('hidden'); ui.btnCloseEvent.classList.remove('hidden');
         updateUI();
+        saveGame();
     };
     ui.eventActions.appendChild(btn);
     
