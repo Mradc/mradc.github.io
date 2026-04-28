@@ -2,6 +2,7 @@ import { ui, toggleSpellbook } from './ui.js';
 import { gameState } from './state.js';
 import { startGame, executePlayerAttack, activateArchon, startEnemyTurn, usePotion, castSpell } from './combat.js';
 import { toggleShop } from './shop.js';
+import { initAudio } from './audio.js';
 
 ui.btnMain.addEventListener('click', () => executePlayerAttack(false));
 ui.btnBonus.addEventListener('click', () => executePlayerAttack(true));
@@ -20,7 +21,10 @@ ui.btnOpenShop.addEventListener('click', () => toggleShop(true));
 ui.btnCloseShop.addEventListener('click', () => toggleShop(false));
 
 // Главное меню
-ui.btnStart.addEventListener('click', startGame);
+ui.btnStart.addEventListener('click', () => {
+    initAudio();
+    startGame();
+});
 ui.btnRestart.addEventListener('click', () => { 
     ui.over.classList.add('hidden'); ui.menu.classList.remove('hidden'); 
 });
