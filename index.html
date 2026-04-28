@@ -8,20 +8,23 @@
 	<link rel="manifest" href="manifest.json">
 </head>
 <body>
+    <!-- Главное меню -->
     <div id="menu-screen" class="flex-center">
         <h1 style="color: var(--accent); margin-bottom: 5px; font-size: 28px;">Мантия Духа</h1>
-        <h2 style="font-size: 16px; color: #aaa; margin-bottom: 25px;">The Vessel: Cataclysm (Fire)</h2>
-        <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; text-align: left; font-size: 13px; max-width: 320px; line-height: 1.5;">
-            <p><b>Развитие Сосуда:</b><br>
-               - Ур. 2: Заговоры и Адское возмездие<br>
-               - Ур. 3: Основные удары = <span class="dmg-fire">Огонь</span>. Форма Архонта.<br>
-               - Ур. 5: Удар бонусным действием после каста магии!<br>
-               - Ур. 6: Мощь Древних (1 и 2 огня = 3)<br>
-               - Ур. 9: Огненный шар</p>
+        
+        <select id="subclass-select" style="background: var(--panel-bg); color: #fff; padding: 10px; border: 2px solid var(--border-color); border-radius: 6px; width: 100%; max-width: 320px; font-size: 16px; font-family: 'Cinzel', serif; margin-bottom: 15px; cursor: pointer; outline: none;">
+            <option value="cataclysm">🔥 Катаклизм (Огонь)</option>
+            <option value="formless">🟢 Бесформенный (Кислота)</option>
+            <option value="fallen">✨ Павший Ангел (Свет)</option>
+        </select>
+
+        <div id="subclass-desc" style="background: var(--panel-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; text-align: left; font-size: 13px; max-width: 320px; line-height: 1.5; min-height: 140px;">
+            <!-- Сюда JS будет вставлять описание класса -->
         </div>
         <button id="btn-start" style="max-width: 200px;">Начать Игру</button>
     </div>
 
+    <!-- Игровой экран -->
     <div id="game-screen" class="hidden">
         <div class="entity-card enemy" id="enemy-ui">
             <div class="avatar-container">
@@ -84,16 +87,16 @@
 
                 <div class="action-row" style="margin-top: 8px;">
                     <div class="toggle-box fire">
-                        <span><span id="giant-strike-text">Огн. Удар</span> (+1d10)</span>
+                        <span><span id="giant-strike-text">Стих. Удар</span> (+1d10)</span>
                         <label class="switch">
                             <input type="checkbox" id="fire-toggle">
                             <span class="slider fire-slider"></span>
                         </label>
                     </div>
-                    <div class="toggle-box magic hidden" id="rebuke-box">
-                        <span>Возмездие <span id="rebuke-text">(0/0)</span></span>
+                    <div class="toggle-box magic hidden" id="reaction-box">
+                        <span><span id="reaction-name">Реакция</span> <span id="reaction-text">(0/0)</span></span>
                         <label class="switch">
-                            <input type="checkbox" id="rebuke-toggle">
+                            <input type="checkbox" id="reaction-toggle">
                             <span class="slider magic-slider"></span>
                         </label>
                     </div>
@@ -104,50 +107,21 @@
                 </div>
             </div>
 
-            <!-- ПАНЕЛЬ РАЗВИЛКИ -->
             <div id="intermission-actions" class="hidden">
                 <div class="action-row" style="margin-bottom: 12px;">
                     <button class="btn-bonus" id="btn-open-shop" style="border-color: #ffd700; color: #ffd700; grid-column: span 2;">🛒 Открыть Магазин</button>
                 </div>
                 <h3 style="font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; text-align: center;">Куда отправимся дальше?</h3>
-                <div id="path-choices" style="display: flex; flex-direction: column; gap: 8px;">
-                    <!-- Сюда вставляются пути -->
-                </div>
+                <div id="path-choices" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
         </div>
 
-        <div id="shop-modal" class="modal-overlay hidden">
-            <div class="shop-window">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
-                    <h2 style="font-size: 18px; color: #ffd700;">Лавка Торговца</h2>
-                    <span id="shop-gold" style="color: #ffd700; font-weight: bold;">💰 0</span>
-                </div>
-                <div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div>
-                <button id="btn-close-shop" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
-            </div>
-        </div>
+        <!-- Модалки (Магазин, Книга Магии, События) -->
+        <div id="shop-modal" class="modal-overlay hidden"><div class="shop-window"><div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-size: 18px; color: #ffd700;">Лавка Торговца</h2><span id="shop-gold" style="color: #ffd700; font-weight: bold;">💰 0</span></div><div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div><button id="btn-close-shop" style="margin-top: 15px; background: #3a3a45;">Закрыть</button></div></div>
+        
+        <div id="spellbook-modal" class="modal-overlay hidden"><div class="shop-window" style="border-color: #ba68c8;"><div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;"><h2 style="font-size: 18px; color: #ba68c8;">Заклинания</h2><span id="spellbook-slots" style="color: #64b5f6; font-weight: bold;">Ячейки: 0/0</span></div><div id="spell-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div><button id="btn-close-spellbook" style="margin-top: 15px; background: #3a3a45;">Закрыть</button></div></div>
 
-        <div id="spellbook-modal" class="modal-overlay hidden">
-            <div class="shop-window" style="border-color: #ba68c8;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
-                    <h2 style="font-size: 18px; color: #ba68c8;">Заклинания</h2>
-                    <span id="spellbook-slots" style="color: #64b5f6; font-weight: bold;">Ячейки: 0/0</span>
-                </div>
-                <div id="spell-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div>
-                <button id="btn-close-spellbook" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
-            </div>
-        </div>
-
-        <!-- МОДАЛЬНОЕ ОКНО СОБЫТИЯ -->
-        <div id="event-modal" class="modal-overlay hidden">
-            <div class="shop-window" style="border-color: #4caf50;">
-                <h2 id="event-title" style="font-size: 20px; color: #4caf50; margin-bottom: 10px; font-family: 'Cinzel', serif;">Событие</h2>
-                <p id="event-desc" style="font-size: 14px; margin-bottom: 15px; line-height: 1.4;"></p>
-                <div id="event-actions" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                <div id="event-result" class="hidden" style="margin-top: 15px; font-size: 14px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px;"></div>
-                <button id="btn-close-event" class="hidden" style="margin-top: 15px; background: #3a3a45;">Продолжить</button>
-            </div>
-        </div>
+        <div id="event-modal" class="modal-overlay hidden"><div class="shop-window" style="border-color: #4caf50;"><h2 id="event-title" style="font-size: 20px; color: #4caf50; margin-bottom: 10px; font-family: 'Cinzel', serif;">Событие</h2><p id="event-desc" style="font-size: 14px; margin-bottom: 15px; line-height: 1.4;"></p><div id="event-actions" style="display: flex; flex-direction: column; gap: 8px;"></div><div id="event-result" class="hidden" style="margin-top: 15px; font-size: 14px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px;"></div><button id="btn-close-event" class="hidden" style="margin-top: 15px; background: #3a3a45;">Продолжить</button></div></div>
     </div>
 
     <div id="game-over-screen" class="hidden flex-center">
