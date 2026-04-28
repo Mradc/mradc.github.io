@@ -62,6 +62,5 @@ ui.btnPotHeal.addEventListener('click', () => usePotion('heal'));
 ui.btnPotElixir.addEventListener('click', () => usePotion('elixir'));
 
 // Привал и Магазин
-ui.btnNextStage.addEventListener('click', () => startNextStage());
 ui.btnOpenShop.addEventListener('click', () => toggleShop(true));
 ui.btnCloseShop.addEventListener('click', () => toggleShop(false));
