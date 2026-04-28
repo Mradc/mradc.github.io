@@ -12,15 +12,16 @@
     <div id="menu-screen" class="flex-center">
         <h1 style="color: var(--accent); margin-bottom: 5px; font-size: 28px;">Мантия Духа</h1>
         <h2 style="font-size: 16px; color: #aaa; margin-bottom: 25px;">The Vessel: Cataclysm (Fire)</h2>
-        <div style="background: var(--panel-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; text-align: left; font-size: 13px; max-width: 320px; line-height: 1.5;">
-            <p><b>Развитие Сосуда:</b><br>
-               - Ур. 2: Заговоры и Адское возмездие<br>
-               - Ур. 3: Основные удары = <span class="dmg-fire">Огонь</span>. Форма Архонта.<br>
-               - Ур. 5: Удар бонусным действием после каста магии!<br>
-               - Ур. 6: Мощь Древних (1 и 2 огня = 3)<br>
-               - Ур. 9: Огненный шар</p>
+        
+        <div id="stats-panel" style="background: var(--panel-bg); padding: 10px; border-radius: 6px; border: 1px solid #333; width: 100%; max-width: 320px; box-sizing: border-box; margin-bottom: 20px; text-align: center;">
+            <p style="margin: 0 0 5px 0; color: #ffd700; font-weight: bold; font-size: 14px; text-transform: uppercase;">📊 Статистика</p>
+            <p style="margin: 0; font-size: 13px; color: #aaa;">Забегов: <span id="stat-runs" style="color:#fff;">0</span> | Побед: <span id="stat-wins" style="color:#fff;">0</span> | Макс. Этап: <span id="stat-stage" style="color:#fff;">0</span></p>
         </div>
-        <button id="btn-start" style="max-width: 200px;">Начать Игру</button>
+
+        <div style="display:flex; flex-direction: column; gap:10px; width: 100%; max-width: 320px;">
+            <button id="btn-continue" class="hidden" style="border-color:#4caf50; color:#4caf50;">Продолжить Игру</button>
+            <button id="btn-start">Новая Игра</button>
+        </div>
     </div>
 
     <div id="game-screen" class="hidden">
