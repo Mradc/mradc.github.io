@@ -1,5 +1,6 @@
 import { player } from './state.js';
 import { ui, updateUI, log } from './ui.js';
+import { sfx } from './audio.js';
 
 export const shopItems =[
     { 
@@ -48,6 +49,7 @@ export function renderShop() {
         
         btn.addEventListener('click', () => {
             if (player.gold >= item.price) {
+                sfx.coin();
                 player.gold -= item.price;
                 item.buy();
                 log(`🛒 Куплено: <b>${item.name}</b> за ${item.price} золота.`, 'system');
