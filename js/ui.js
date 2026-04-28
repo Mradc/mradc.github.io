@@ -1,5 +1,6 @@
 import { player, enemyState, gameState } from './state.js';
 import { xpThresholds } from './utils.js';
+import { sfx } from './audio.js';
 
 export const ui = {
     menu: document.getElementById('menu-screen'), game: document.getElementById('game-screen'), over: document.getElementById('game-over-screen'), log: document.getElementById('combat-log'),
@@ -32,6 +33,33 @@ const traitNames = { 'nimble': 'Вёрткий', 'undead_fortitude': 'Стойк
 export function log(msg, type = 'system') {
     const el = document.createElement('div'); el.className = `log-entry ${type}`; el.innerHTML = msg;
     ui.log.appendChild(el); setTimeout(() => { ui.log.scrollTop = ui.log.scrollHeight; }, 10);
+}
+
+export function spawnFloatingText(targetAvatar, text, color) {
+    if (!targetAvatar) return;
+    const rect = targetAvatar.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'floating-text';
+    el.innerText = text;
+    el.style.color = color;
+    
+    const offsetX = (Math.random() - 0.5) * 30; // Легкий разброс влево-вправо
+    el.style.left = (rect.left + rect.width / 2 + offsetX) + 'px';
+    el.style.top = (rect.top + rect.height / 2) + 'px';
+    
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+}
+
+export function triggerFlash(targetAvatar) {
+    if (!targetAvatar) return;
+    targetAvatar.classList.add('flash-red');
+    setTimeout(() => targetAvatar.classList.remove('flash-red'), 300);
+}
+
+export function triggerShake() {
+    ui.game.classList.add('shake');
+    setTimeout(() => ui.game.classList.remove('shake'), 400);
 }
 
 export function renderNewEnemy() {
