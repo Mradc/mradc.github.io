@@ -123,7 +123,8 @@ export const enemyState = {
             xpGiven: isElite ? config.xp * 2 : config.xp, 
             goldGiven: actualGold, goldCritMsg: goldCritMsg, 
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${config.seed}${stage}`,
-            traits: config.traits ||[],
+            traits: config.traits ||
+[],
             hitByElement: false, usedFortitude: false,
             blinded: false, stunned: false // Новые статусы
         };
