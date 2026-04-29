@@ -231,7 +231,7 @@ export function startEnemyTurn() {
 
         if (isMiss && !isCrit) {
             sfx.miss(); spawnFloatingText(ui.playerAvatar, "Уворот", "#9e9e9e");
-            log(`${enemyState.current.name} не пробивает (<span class="dice-roll">${d20}</span> + ${enemyState.current.hitMod}) Эфирную броню!`, 'enemy-turn');
+            log(`${enemyState.current.name} не пробивает (<span class="dice-roll">${d20}</span> + ${enemyState.current.hitMod} = ${atkTotal}) Эфирную броню!`, 'enemy-turn');
         } else {
             let totalDmg = roll(enemyState.current.dmgD, enemyState.current.dmgC) + (isCrit ? roll(enemyState.current.dmgD, enemyState.current.dmgC) : 0) + enemyState.current.dmgMod;
             takePlayerDamage(totalDmg);
