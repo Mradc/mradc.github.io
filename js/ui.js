@@ -12,6 +12,7 @@ export const ui = {
     indAction: document.querySelector('#ind-action .dot'), indBonus: document.querySelector('#ind-bonus .dot'),
     playerHpText: document.getElementById('player-hp-text'), playerHpBar: document.getElementById('player-hp-bar'), playerXpText: document.getElementById('player-xp-text'), playerXpBar: document.getElementById('player-xp-bar'),
     playerLevel: document.getElementById('player-level'), playerAc: document.getElementById('player-ac'), playerGold: document.getElementById('player-gold'),
+    playerAvatar: document.getElementById('player-avatar'),
     enemyHpText: document.getElementById('enemy-hp-text'), enemyHpBar: document.getElementById('enemy-hp-bar'), enemyAvatar: document.getElementById('enemy-avatar'), enemyName: document.getElementById('enemy-name'),
     enemyAc: document.getElementById('enemy-ac'), enemyTraits: document.getElementById('enemy-traits'),
     gameOverTitle: document.getElementById('game-over-title'), gameOverDesc: document.getElementById('game-over-desc'),
