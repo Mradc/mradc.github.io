@@ -46,6 +46,7 @@
             <div class="avatar-container">
                 <img id="player-avatar" class="avatar" src="https://hotbox.longstoryshort.app/avatar/6957f7e63bbc37d9e6693f9a.webp" alt="Player">
                 <div class="ac-badge" id="player-ac">16</div>
+                <button id="btn-open-inventory" title="Снаряжение" style="position:absolute; top:-4px; left:-4px; width:24px; height:24px; border-radius:50%; background:#2a2a35; border:1px solid #64b5f6; color:#64b5f6; font-size:12px; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer;">🎒</button>
             </div>
             <div class="stats">
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
@@ -100,20 +101,67 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- АКТИВНЫЕ АСПЕКТЫ: показываются только если открыты -->
+                <div class="action-row" style="margin-top: 8px;">
+                    <button class="btn-action hidden" id="btn-maw" style="border-color:#ba68c8; color:#ba68c8; font-size:11px; grid-column: span 2;">👄 Иномирная пасть</button>
+                </div>
+                <div class="action-row" style="margin-top: 8px;">
+                    <div class="toggle-box magic hidden" id="dazzling-box">
+                        <span>Ослепл. копьё <span id="dazzling-text">(0)</span></span>
+                        <label class="switch">
+                            <input type="checkbox" id="dazzling-toggle">
+                            <span class="slider magic-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="action-row" style="margin-top: 8px;">
                     <button class="btn-bonus" id="btn-attack-bonus" disabled>Доп. удар</button>
                     <button class="btn-end" id="btn-end-turn">Конец хода</button>
                 </div>
             </div>
 
-            <!-- ПАНЕЛЬ РАЗВИЛКИ -->
+            <!-- ПАНЕЛЬ ЭТАПА (между боями) -->
             <div id="intermission-actions" class="hidden">
-                <div class="action-row" style="margin-bottom: 12px;">
-                    <button class="btn-bonus" id="btn-open-shop" style="border-color: #ffd700; color: #ffd700; grid-column: span 2;">🛒 Открыть Магазин</button>
+                <div id="stage-banner">
+                    Этап <b id="stage-current">1</b> / 16 · Взаимодействий осталось: <b id="stage-interactions">2</b>
                 </div>
-                <h3 style="font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; text-align: center;">Куда отправимся дальше?</h3>
-                <div id="path-choices" style="display: flex; flex-direction: column; gap: 8px;">
-                    <!-- Сюда вставляются пути -->
+                <div class="action-row">
+                    <button class="btn-action" id="btn-open-map" style="grid-column: span 2; border-color: #81c784; color: #81c784;">🗺️ Открыть карту области</button>
+                </div>
+                <div class="action-row" style="margin-top: 8px;">
+                    <button class="btn-bonus" id="btn-open-shop" style="border-color: #ffd700; color: #ffd700; font-size: 12px;">🛒 Магазин</button>
+                    <button class="btn-bonus" id="btn-next-stage" style="border-color: #4caf50; color: #4caf50; font-size: 12px;">➡️ След. этап</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- МОДАЛЬНОЕ ОКНО КАРТЫ ОБЛАСТИ -->
+        <div id="map-modal" class="modal-overlay hidden">
+            <div class="shop-window" style="border-color: #81c784;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+                    <h2 style="font-size: 17px; color: #81c784; font-family: 'Cinzel', serif;">🗺️ <span id="map-stage-label">Этап 1 / 16</span></h2>
+                    <span id="map-pips-wrap">Ходы: <span id="map-pips"></span></span>
+                </div>
+                <div id="map-area">
+                    <div id="map-terrain"></div>
+                    <div id="map-nodes"></div>
+                    <div id="map-camp">⛺ <span>вы здесь</span></div>
+                </div>
+                <div id="map-detail"></div>
+                <button id="btn-close-map" style="margin-top: 12px; background: #3a3a45;">Свернуть карту</button>
+            </div>
+        </div>
+
+        <!-- МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ -->
+        <div id="confirm-modal" class="modal-overlay hidden" style="z-index: 120;">
+            <div class="shop-window" style="border-color: #ffb74d; max-width: 340px;">
+                <h2 id="confirm-title" style="font-size: 17px; color: #ffb74d; margin-bottom: 10px; font-family: 'Cinzel', serif;">Подтверждение</h2>
+                <p id="confirm-desc" style="font-size: 13px; line-height: 1.45; margin-bottom: 15px;"></p>
+                <div class="action-row">
+                    <button id="btn-confirm-no" style="background: #3a3a45;">Остаться</button>
+                    <button id="btn-confirm-yes" style="border-color: #4caf50; color: #4caf50;">Идти дальше</button>
                 </div>
             </div>
         </div>
@@ -124,7 +172,11 @@
                     <h2 style="font-size: 18px; color: #ffd700;">Лавка Торговца</h2>
                     <span id="shop-gold" style="color: #ffd700; font-weight: bold;">💰 0</span>
                 </div>
-                <div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto;"></div>
+                <div id="shop-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 32vh; overflow-y: auto;"></div>
+                <div id="shop-buyback" class="hidden" style="margin-top: 14px;">
+                    <p style="font-size: 11px; color: #81c784; margin-bottom: 8px; text-transform: uppercase;">🧺 Скупка снаряжения</p>
+                    <div id="shop-buyback-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 26vh; overflow-y: auto;"></div>
+                </div>
                 <button id="btn-close-shop" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
             </div>
         </div>
@@ -148,6 +200,48 @@
                 <div id="event-actions" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 <div id="event-result" class="hidden" style="margin-top: 15px; font-size: 14px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px;"></div>
                 <button id="btn-close-event" class="hidden" style="margin-top: 15px; background: #3a3a45;">Продолжить</button>
+            </div>
+        </div>
+
+        <!-- МОДАЛЬНОЕ ОКНО ПОСЕЛЕНИЯ -->
+        <div id="settlement-modal" class="modal-overlay hidden">
+            <div class="shop-window" style="border-color: #64b5f6;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+                    <h2 id="settlement-title" style="font-size: 18px; color: #64b5f6; font-family: 'Cinzel', serif;">Поселение</h2>
+                    <span id="settlement-gold" style="color: #ffd700; font-weight: bold;">💰 0</span>
+                </div>
+                <p id="settlement-desc" style="font-size: 13px; color: #aaa; margin-bottom: 12px; line-height: 1.4;"></p>
+                <div id="settlement-body" style="display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto;"></div>
+                <div style="display:flex; gap:8px; margin-top: 15px;">
+                    <button id="btn-settlement-back" class="hidden" style="background: #3a3a45;">Назад</button>
+                    <button id="btn-close-settlement" style="background: #3a3a45; flex:1;">Покинуть поселение</button>
+                </div>
+            </div>
+        </div>
+        <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА АСПЕКТА -->
+        <div id="aspect-modal" class="modal-overlay hidden">
+            <div class="shop-window" style="border-color: #ba68c8;">
+                <h2 id="aspect-title" style="font-size: 17px; color: #ba68c8; margin-bottom: 8px; font-family: 'Cinzel', serif;">Незапечатанный Аспект</h2>
+                <p id="aspect-desc" style="font-size: 13px; color: #aaa; margin-bottom: 12px; line-height: 1.4;"></p>
+                <div id="aspect-body" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;"></div>
+            </div>
+        </div>
+        <!-- МОДАЛЬНОЕ ОКНО СНАРЯЖЕНИЯ -->
+        <div id="inventory-modal" class="modal-overlay hidden">
+            <div class="shop-window" style="border-color: #64b5f6;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">
+                    <h2 style="font-size: 18px; color: #64b5f6; font-family: 'Cinzel', serif;">🎒 Снаряжение</h2>
+                    <span id="inventory-gold" style="color: #ffd700; font-weight: bold;">💰 0</span>
+                </div>
+                <p style="font-size: 11px; color: #888; margin-bottom: 8px; text-transform: uppercase;">Экипировка</p>
+                <div id="inventory-equipment" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+                <p style="font-size: 11px; color: #888; margin-bottom: 8px; text-transform: uppercase;">Расходники</p>
+                <div id="inventory-consumables" style="display: flex; flex-direction: column; gap: 8px; max-height: 20vh; overflow-y: auto;"></div>
+                <div id="inventory-bag-section" class="hidden" style="margin-top: 16px;">
+                    <p style="font-size: 11px; color: #64b5f6; margin-bottom: 8px; text-transform: uppercase;">🎒 Сумка (не надето)</p>
+                    <div id="inventory-bag" style="display: flex; flex-direction: column; gap: 8px; max-height: 24vh; overflow-y: auto;"></div>
+                </div>
+                <button id="btn-close-inventory" style="margin-top: 15px; background: #3a3a45;">Закрыть</button>
             </div>
         </div>
     </div>
