@@ -3,7 +3,8 @@
 :root {
     --bg-dark: #121212; --panel-bg: #1e1e24; --border-color: #3a3a45; --text-light: #e0e0e0;
     --accent: #d84b20; --hp-color: #d32f2f; --thp-color: #1976d2; --xp-color: #388e3c;
-    --radiant-color: #fbc02d; --fire-color: #e64a19; --enemy-color: #7b1fa2; --levelup-color: #ffd700;
+    --radiant-color: #fbc02d; --fire-color: #e64a19; --enemy-color: #7b1fa2; --levelup-color: #ffd700; --aspect-color: #ba68c8;
+    --bludgeoning-color: #a1887f; --piercing-color: #b0bec5; --slashing-color: #e57373; --necrotic-color: #8bc34a;
 }
 
 body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); color: var(--text-light); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -47,10 +48,33 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .log-entry.enemy-turn { border-left: 4px solid var(--enemy-color); }
 .log-entry.system { border-left: 4px solid #607d8b; font-style: italic; color: #b0bec5; font-size: 13px; text-align: center;}
 .log-entry.levelup { border: 2px solid var(--levelup-color); background: rgba(255, 215, 0, 0.1); text-align: center; font-weight: bold; color: var(--levelup-color);}
+.log-entry.aspect {
+    text-align: center; font-weight: bold; color: #f3e5ff;
+    padding: 12px 16px; margin: 4px 0;
+    border: 1px solid var(--aspect-color); border-radius: 10px;
+    background: linear-gradient(135deg, rgba(186,104,200,0.28) 0%, rgba(40,20,55,0.55) 55%, rgba(186,104,200,0.28) 100%);
+    box-shadow: 0 0 14px rgba(186,104,200,0.55);
+    animation: aspectGlowIn 1.2s ease-out;
+}
+.aspect-ribbon {
+    display: inline-block; font-size: 10px; letter-spacing: 2px; font-weight: 700;
+    color: #1b0f24; background: var(--aspect-color); border-radius: 4px;
+    padding: 2px 10px; margin-bottom: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+@keyframes aspectGlowIn {
+    0% { box-shadow: 0 0 0 rgba(186,104,200,0); opacity: 0; }
+    50% { box-shadow: 0 0 22px rgba(186,104,200,0.9); }
+    100% { box-shadow: 0 0 14px rgba(186,104,200,0.55); opacity: 1; }
+}
 
 .dice-roll { color: #fff; font-weight: bold; background: #333; padding: 2px 6px; border-radius: 4px; }
 .dmg-radiant { color: var(--radiant-color); font-weight: bold; text-shadow: 0 0 4px rgba(251,192,45,0.5); }
 .dmg-fire { color: var(--fire-color); font-weight: bold; text-shadow: 0 0 4px rgba(230,74,25,0.5); }
+.dmg-bludgeoning { color: var(--bludgeoning-color); font-weight: bold; text-shadow: 0 0 4px rgba(161,136,127,0.4); }
+.dmg-piercing { color: var(--piercing-color); font-weight: bold; text-shadow: 0 0 4px rgba(176,190,197,0.4); }
+.dmg-slashing { color: var(--slashing-color); font-weight: bold; text-shadow: 0 0 4px rgba(229,115,115,0.4); }
+.dmg-necrotic { color: var(--necrotic-color); font-weight: bold; text-shadow: 0 0 4px rgba(139,195,74,0.5); }
 .crit { color: #f44336; font-weight: bold; text-transform: uppercase; }
 
 #action-panel { background-color: var(--panel-bg); padding: 10px 15px 15px 15px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #333; }
@@ -131,3 +155,98 @@ input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
     90% { transform: translate(1px, 2px) rotate(0deg); }
     100% { transform: translate(0px, 0px) rotate(0deg); }
 }
+
+/* --- КАРТА ОБЛАСТИ --- */
+
+#stage-banner {
+    text-align: center; font-size: 12px; color: #aaa; margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+#stage-banner b { color: #e0e0e0; }
+
+#map-pips-wrap { font-size: 11px; color: #888; text-transform: uppercase; }
+#map-pips { display: inline-flex; gap: 4px; vertical-align: middle; margin-left: 4px; }
+.pip { width: 10px; height: 10px; border-radius: 50%; background: #81c784; box-shadow: 0 0 6px rgba(129,199,132,0.6); }
+.pip.spent { background: #3a3a45; box-shadow: none; }
+
+#map-modal .shop-window { max-height: 92vh; overflow-y: auto; }
+
+#map-area {
+    position: relative; width: 100%;
+    height: clamp(230px, 38vh, 310px);
+    border: 1px solid #3a3a45; border-radius: 8px; overflow: hidden;
+    background: #131318; /* подложка; сверху рисуется сгенерированная местность */
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
+}
+
+/* Слой процедурной местности (terrain.js) — строго под точками */
+#map-terrain { position: absolute; inset: 0; pointer-events: none; }
+#map-terrain svg { display: block; width: 100%; height: 100%; }
+
+.terr-fog { animation: terrDrift 26s ease-in-out infinite alternate; }
+@keyframes terrDrift {
+    from { transform: translateX(-7px); opacity: 0.75; }
+    to   { transform: translateX(9px);  opacity: 1; }
+}
+
+.terr-mote { animation: terrRise 8s linear infinite; opacity: 0.75; }
+@keyframes terrRise {
+    0%   { transform: translate(0, 6px); opacity: 0; }
+    20%  { opacity: 0.8; }
+    80%  { opacity: 0.55; }
+    100% { transform: translate(6px, -26px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .terr-fog, .terr-mote { animation: none; }
+}
+
+#map-camp {
+    position: absolute; left: 8px; bottom: 5px; z-index: 2;
+    font-size: 10px; line-height: 1.1; color: #9a9aa6; pointer-events: none;
+    text-shadow: 0 1px 2px #000, 0 0 6px #000;
+}
+#map-camp span { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; }
+
+#map-nodes { position: absolute; inset: 0; z-index: 2; }
+
+.map-node {
+    position: absolute; transform: translate(-50%, -50%);
+    width: 56px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.map-node .circle {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; background: rgba(20,20,26,0.92); border: 2px solid currentColor;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.85), 0 0 0 4px rgba(10,10,14,0.35);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.map-node .caption {
+    font-size: 9px; line-height: 1.1; text-align: center; color: #d2d2d8;
+    text-shadow: 0 1px 2px #000, 0 0 5px #000, 0 0 9px #000;
+}
+.map-node:hover .circle { transform: scale(1.1); }
+.map-node.selected .circle {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.15), 0 0 16px currentColor;
+}
+.map-node.selected .caption { color: #fff; font-weight: bold; }
+.map-node.done { opacity: 0.35; filter: grayscale(1); }
+.map-node.locked { opacity: 0.45; }
+.map-node.boss .circle { animation: bossPulse 1.8s ease-in-out infinite; }
+
+@keyframes bossPulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.55); }
+    50% { box-shadow: 0 0 18px rgba(211,47,47,0.85); }
+}
+
+#map-detail {
+    margin-top: 10px; background: #2a2a35; border: 1px solid #3a3a45;
+    border-left: 4px solid #3a3a45; border-radius: 6px; padding: 10px;
+    display: flex; flex-direction: column; justify-content: center;
+    min-height: 92px; /* фиксируем высоту, чтобы окно не "прыгало" при выборе точки */
+}
+.map-hint { margin: 0; font-size: 12px; color: #aaa; text-align: center; line-height: 1.4; }
+.map-detail-name { margin: 0 0 4px 0; font-size: 14px; font-weight: bold; }
+.map-detail-desc { margin: 0; font-size: 12px; color: #bbb; line-height: 1.4; }
