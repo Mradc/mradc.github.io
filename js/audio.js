@@ -43,5 +43,21 @@ export const sfx = {
         playTone(440, 'square', 0.2, 0.1);                     // Фанфары левелапа
         setTimeout(() => playTone(554, 'square', 0.2, 0.1), 200);
         setTimeout(() => playTone(659, 'square', 0.5, 0.1), 400);
+    },
+    equip: () => {
+        playTone(220, 'square', 0.05, 0.09, 1.3);               // Клац пряжки
+        setTimeout(() => playTone(340, 'square', 0.08, 0.08, 1.15), 55); // и застёгивание
+    },
+    unequip: () => {
+        playTone(260, 'triangle', 0.09, 0.07, 0.55);            // Мягкий шорох снятия
+    },
+    sell: () => {
+        playTone(700, 'triangle', 0.06, 0.05, 0.5);             // Предмет уходит с прилавка
+        setTimeout(() => playTone(1200, 'sine', 0.16, 0.05), 70); // Монеты звенят в ответ
+    },
+    chestFind: () => {
+        playTone(500, 'triangle', 0.09, 0.07, 1.4);             // Скрип крышки сундука
+        setTimeout(() => playTone(900, 'sine', 0.12, 0.06, 1.3), 90);  // Блеск находки
+        setTimeout(() => playTone(1300, 'sine', 0.18, 0.05, 1.2), 180);
     }
 };

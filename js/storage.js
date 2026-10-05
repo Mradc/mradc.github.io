@@ -1,5 +1,6 @@
 import { player, enemyState, gameState } from './state.js';
 import { ui } from './ui.js';
+import { recomputeNonHpEquipStats } from './equipment.js';
 
 export function saveGame() {
     const data = {
@@ -7,11 +8,14 @@ export function saveGame() {
             level: player.level, xp: player.xp, gold: player.gold,
             bonusAc: player.bonusAc, maxHp: player.maxHp, hp: player.hp,
             currentGiantStrikeCharges: player.currentGiantStrikeCharges,
-            spellSlots: player.spellSlots, inventory: player.inventory
+            spellSlots: player.spellSlots, inventory: player.inventory, healTier: player.healTier,
+            equipment: player.equipment, equipmentBag: player.equipmentBag, ownedUnique: player.ownedUnique, knownAspects: player.knownAspects
         },
         stage: gameState.stage,
-        paths: gameState.paths,
+        map: gameState.map,
         enemy: enemyState.current,
+        settlementVisit: gameState.settlementVisit,
+        pendingAspectChoices: gameState.pendingAspectChoices,
         logHTML: ui.log.innerHTML // Сохраняем весь текст и цветные логи!
     };
     localStorage.setItem('vessel_save', JSON.stringify(data));
@@ -23,8 +27,11 @@ export function loadGame() {
     const data = JSON.parse(save);
     
     player.loadData(data.player);
+    recomputeNonHpEquipStats();
     gameState.stage = data.stage;
-    gameState.paths = data.paths ||[];
+    gameState.map = data.map || null; // старые сохранения (с paths) просто сгенерируют новую карту
+    gameState.settlementVisit = data.settlementVisit || null;
+    gameState.pendingAspectChoices = data.pendingAspectChoices || 0;
     enemyState.current = data.enemy || null;
     
     if (data.logHTML) {
