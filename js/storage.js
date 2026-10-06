@@ -6,7 +6,7 @@ export function saveGame() {
     const data = {
         player: {
             level: player.level, xp: player.xp, gold: player.gold,
-            bonusAc: player.bonusAc, maxHp: player.maxHp, hp: player.hp,
+            bonusAc: player.bonusAc, maxHp: player.maxHp + (player.hpDrain || 0), hp: player.hp, // hpDrain: иссушённое в бою возвращается
             currentGiantStrikeCharges: player.currentGiantStrikeCharges,
             spellSlots: player.spellSlots, inventory: player.inventory, healTier: player.healTier,
             equipment: player.equipment, equipmentBag: player.equipmentBag, ownedUnique: player.ownedUnique, knownAspects: player.knownAspects

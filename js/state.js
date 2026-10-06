@@ -1,4 +1,5 @@
 import { roll, xpThresholds, slotLevelByVesselLevel, healPotionTiers } from './utils.js';
+import { abilityCatalog } from './abilities.js';
 
 // ===================================================================
 // ТИПЫ УРОНА (как в D&D 5e) — сейчас нужны только для атак ВРАГОВ
@@ -12,7 +13,9 @@ export const damageTypeMeta = {
     slashing:    { label: 'руб.',  full: 'Рубящий урон',  icon: '⚔️', className: 'dmg-slashing' },
     fire:        { label: 'огн.',  full: 'Огненный урон', icon: '🔥', className: 'dmg-fire' },
     necrotic:    { label: 'некр.', full: 'Некротический урон', icon: '💀', className: 'dmg-necrotic' },
-    acid:        { label: 'кисл.', full: 'Кислотный урон', icon: '🧪', className: 'dmg-acid' }
+    acid:        { label: 'кисл.', full: 'Кислотный урон', icon: '🧪', className: 'dmg-acid' },
+    poison:      { label: 'яд.',   full: 'Урон ядом',      icon: '☠️', className: 'dmg-poison' },
+    psychic:     { label: 'псих.', full: 'Психический урон', icon: '🧠', className: 'dmg-psychic' }
 };
 
 // map — сгенерированная область текущего этапа (см. map.js): точки интереса,
@@ -22,6 +25,18 @@ export const gameState = { stage: 1, maxStage: 16, turn: 'player', inCombat: fal
 export const player = {
     level: 1, xp: 0, gold: 0,
     conMod: 3, chaMod: 3, dexMod: 0, bonusAc: 0,
+    // Остальные модификаторы характеристик (нужны только для спасбросков от способностей врагов)
+    strMod: 0, intMod: 0, wisMod: 0,
+    // Владение спасбросками (прибавляется бонус мастерства). Меняется одной строкой.
+    saveProf: ['con', 'cha'],
+    saveMod(ability) {
+        const base = { str: this.strMod, dex: this.dexMod, con: this.conMod, int: this.intMod, wis: this.wisMod, cha: this.chaMod }[ability] || 0;
+        return base + (this.saveProf.includes(ability) ? this.pb : 0);
+    },
+    // Боевые состояния (см. conditions.js): { id: { turns, dc, tick } }. Живут только в бою.
+    conditions: {}, ccImmune: false,
+    // Макс. ХП, временно «выпитое» некротикой (возвращается после боя)
+    hpDrain: 0,
     maxHp: 13, hp: 13, tempHp: 0,
     
     get ac() { return 10 + this.conMod + this.chaMod + this.bonusAc + this.equipAcBonus + (this.archonActive ? this.archonAspectAcBonus : 0); }, 
@@ -87,6 +102,7 @@ export const player = {
         this.currentGiantStrikeCharges = this.maxGiantStrikeCharges;
         this.spellSlots = this.maxSpellSlots; this.archonActive = false;
         this.reactionAvailable = true;
+        this.conditions = {}; this.ccImmune = false; this.hpDrain = 0;
     },
 
     loadData: function(data) {
@@ -110,6 +126,7 @@ export const player = {
         
         this.archonActive = false; this.tempHp = 0; // Врем. баффы сбрасываем
         this.reactionAvailable = true;
+        this.conditions = {}; this.ccImmune = false; this.hpDrain = 0;
     },
 
     checkLevelUp: function() {
@@ -142,6 +159,10 @@ export const player = {
 // считается дробящим. Игрок получает Сопротивление огню с 3 уровня
 // (player.fireResistant) — оно применяется именно к этому полю.
 //
+// abilities — id особых способностей из abilities.js (спасброски игрока,
+// состояния, дыхание, захваты...). heads — механика гидры (см. updateHeads
+// в combat.js). Трейт 'frenzy' — «Кровавая ярость»: ниже 50% ХП +1 удар.
+//
 // ВАРИАЦИИ ВРАГОВ: каждый этап — это МАССИВ возможных особей (пул), а не
 // одна фиксированная. При генерации области (map.js) для этапа выбирается
 // одна случайная особь из пула — она и определяет, кто выйдет и в обычном
@@ -152,81 +173,81 @@ export const player = {
 export const stagePools = [
     // 1 — Луга
     [
-        { name: "Гигантская крыса", hp: 10, ac: 11, hit: 2, dmgD: 4, dmgMod: 1, xp: 100, gold: 15, seed: "Rat", traits: [], dmgType: 'piercing', theme: 'meadow' },
-        { name: "Дикий кабан", hp: 13, ac: 11, hit: 2, dmgD: 4, dmgMod: 2, xp: 100, gold: 15, seed: "Boar", traits: ['reckless'], dmgType: 'bludgeoning', theme: 'meadow' }
+        { name: "Гигантская крыса", hp: 10, ac: 11, hit: 2, dmgD: 4, dmgMod: 1, xp: 100, gold: 15, seed: "Rat", traits: [], dmgType: 'piercing', abilities: ['rat_bite'], theme: 'meadow' },
+        { name: "Дикий кабан", hp: 13, ac: 11, hit: 2, dmgD: 4, dmgMod: 2, xp: 100, gold: 15, seed: "Boar", traits: ['reckless'], dmgType: 'bludgeoning', abilities: ['boar_charge'], theme: 'meadow' }
     ],
     // 2 — Лес
     [
-        { name: "Гоблин-грабитель", hp: 15, ac: 12, hit: 3, dmgD: 6, dmgMod: 2, xp: 100, gold: 20, seed: "Gobl", traits: ['nimble'], dmgType: 'slashing', theme: 'forest' },
-        { name: "Лесной волк", hp: 14, ac: 12, hit: 3, dmgD: 6, dmgMod: 2, xp: 100, gold: 18, seed: "Wolf", traits: ['nimble'], dmgType: 'piercing', theme: 'forest' }
+        { name: "Гоблин-грабитель", hp: 15, ac: 12, hit: 3, dmgD: 6, dmgMod: 2, xp: 100, gold: 20, seed: "Gobl", traits: ['nimble'], dmgType: 'slashing', abilities: ['goblin_pilfer'], theme: 'forest' },
+        { name: "Лесной волк", hp: 14, ac: 12, hit: 3, dmgD: 6, dmgMod: 2, xp: 100, gold: 18, seed: "Wolf", traits: ['nimble'], dmgType: 'piercing', abilities: ['wolf_trip'], theme: 'forest' }
     ],
     // 3 — Лес
     [
-        { name: "Вожак гоблинов", hp: 25, ac: 13, hit: 4, dmgD: 6, dmgMod: 2, xp: 150, gold: 40, seed: "GobB", traits: ['nimble'], dmgType: 'slashing', theme: 'forest' },
-        { name: "Падший друид", hp: 24, ac: 13, hit: 4, dmgD: 6, dmgMod: 2, xp: 150, gold: 35, seed: "Drui", traits: [], dmgType: 'necrotic', theme: 'forest' }
+        { name: "Вожак гоблинов", hp: 25, ac: 13, hit: 4, dmgD: 6, dmgMod: 2, xp: 150, gold: 40, seed: "GobB", traits: ['nimble'], dmgType: 'slashing', abilities: ['goblin_warcry'], theme: 'forest' },
+        { name: "Падший друид", hp: 24, ac: 13, hit: 4, dmgD: 6, dmgMod: 2, xp: 150, gold: 35, seed: "Drui", traits: [], dmgType: 'necrotic', abilities: ['druid_roots'], theme: 'forest' }
     ],
     // 4 — Кладбище (либо пустынная гробница)
     [
-        { name: "Скелет-воин", hp: 30, ac: 13, hit: 4, dmgD: 6, dmgMod: 2, xp: 200, gold: 30, seed: "Skel", traits: ['undead_fortitude'], dmgType: 'bludgeoning', theme: 'graveyard' },
-        { name: "Иссохшая мумия", hp: 34, ac: 12, hit: 4, dmgD: 6, dmgMod: 2, xp: 200, gold: 35, seed: "Mumm", traits: ['undead_fortitude'], dmgType: 'necrotic', theme: 'desert' }
+        { name: "Скелет-воин", hp: 30, ac: 13, hit: 4, dmgD: 6, dmgMod: 2, xp: 200, gold: 30, seed: "Skel", traits: ['undead_fortitude'], dmgType: 'bludgeoning', abilities: ['skeleton_burst'], theme: 'graveyard' },
+        { name: "Иссохшая мумия", hp: 34, ac: 12, hit: 4, dmgD: 6, dmgMod: 2, xp: 200, gold: 35, seed: "Mumm", traits: ['undead_fortitude'], dmgType: 'necrotic', abilities: ['mummy_glare', 'mummy_rot'], theme: 'desert' }
     ],
     // 5 — Кладбище
     [
-        { name: "Упырь", hp: 40, ac: 13, hit: 4, dmgD: 8, dmgMod: 2, xp: 250, gold: 50, seed: "Ghoul", traits: ['lifesteal'], atk: 2, dmgType: 'piercing', theme: 'graveyard' },
-        { name: "Гниющий зомби", hp: 46, ac: 11, hit: 3, dmgD: 8, dmgMod: 3, xp: 240, gold: 45, seed: "Zomb", traits: ['undead_fortitude'], dmgType: 'bludgeoning', theme: 'graveyard' }
+        { name: "Упырь", hp: 40, ac: 13, hit: 4, dmgD: 8, dmgMod: 2, xp: 250, gold: 50, seed: "Ghoul", traits: ['lifesteal'], atk: 2, dmgType: 'piercing', abilities: ['ghoul_claws'], theme: 'graveyard' },
+        { name: "Гниющий зомби", hp: 46, ac: 11, hit: 3, dmgD: 8, dmgMod: 3, xp: 240, gold: 45, seed: "Zomb", traits: ['undead_fortitude'], dmgType: 'bludgeoning', abilities: ['zombie_miasma'], theme: 'graveyard' }
     ],
     // 6 — Проклятые земли
     [
-        { name: "Теневой дух", hp: 45, ac: 13, hit: 5, dmgD: 8, dmgMod: 3, xp: 200, gold: 40, seed: "Shad", traits: [], dmgType: 'necrotic', theme: 'haunted' },
-        { name: "Буйный полтергейст", hp: 42, ac: 12, hit: 6, dmgD: 8, dmgMod: 2, xp: 200, gold: 40, seed: "Polt", traits: [], dmgType: 'bludgeoning', theme: 'haunted' }
+        { name: "Теневой дух", hp: 45, ac: 13, hit: 5, dmgD: 8, dmgMod: 3, xp: 200, gold: 40, seed: "Shad", traits: [], dmgType: 'necrotic', abilities: ['shadow_drain'], theme: 'haunted' },
+        { name: "Буйный полтергейст", hp: 42, ac: 12, hit: 6, dmgD: 8, dmgMod: 2, xp: 200, gold: 40, seed: "Polt", traits: [], dmgType: 'bludgeoning', abilities: ['poltergeist_slam'], theme: 'haunted' }
     ],
     // 7 — Нагорья (либо пустынный кочевник)
     [
-        { name: "Орк-берсерк", hp: 65, ac: 13, hit: 5, dmgD: 10, dmgMod: 3, xp: 800, gold: 80, seed: "Orc", traits: ['reckless'], atk: 2, dmgType: 'slashing', theme: 'highland' },
-        { name: "Песчаный разбойник", hp: 62, ac: 13, hit: 5, dmgD: 10, dmgMod: 3, xp: 800, gold: 90, seed: "Raid", traits: ['reckless'], atk: 2, dmgType: 'slashing', theme: 'desert' }
+        { name: "Орк-берсерк", hp: 65, ac: 13, hit: 5, dmgD: 10, dmgMod: 3, xp: 800, gold: 80, seed: "Orc", traits: ['reckless', 'frenzy'], atk: 2, dmgType: 'slashing', theme: 'highland' },
+        { name: "Песчаный разбойник", hp: 62, ac: 13, hit: 5, dmgD: 10, dmgMod: 3, xp: 800, gold: 90, seed: "Raid", traits: ['reckless'], atk: 2, dmgType: 'slashing', abilities: ['bandit_sand'], theme: 'desert' }
     ],
     // 8 — Топи
     [
-        { name: "Тролль", hp: 85, ac: 14, hit: 6, dmgD: 10, dmgMod: 4, xp: 1000, gold: 100, seed: "Trol", traits: ['regeneration'], atk: 2, dmgType: 'bludgeoning', theme: 'swamp' },
-        { name: "Гигантская пиявка", hp: 78, ac: 13, hit: 6, dmgD: 10, dmgMod: 4, xp: 1000, gold: 95, seed: "Leech", traits: ['lifesteal'], dmgType: 'piercing', theme: 'swamp' }
+        { name: "Тролль", hp: 85, ac: 14, hit: 6, dmgD: 10, dmgMod: 4, xp: 1000, gold: 100, seed: "Trol", traits: ['regeneration'], atk: 2, dmgType: 'bludgeoning', abilities: ['troll_grab'], theme: 'swamp' },
+        { name: "Гигантская пиявка", hp: 78, ac: 13, hit: 6, dmgD: 10, dmgMod: 4, xp: 1000, gold: 95, seed: "Leech", traits: ['lifesteal'], dmgType: 'piercing', abilities: ['leech_attach'], theme: 'swamp' }
     ],
     // 9 — Пепелища
     [
-        { name: "Демон-охотник", hp: 110, ac: 14, hit: 6, dmgD: 8, dmgMod: 4, xp: 1500, gold: 150, seed: "Dem", traits: ['fire_resistance'], atk: 2, dmgType: 'piercing', theme: 'ashen' },
-        { name: "Пепельный голем", hp: 125, ac: 13, hit: 5, dmgD: 12, dmgMod: 4, xp: 1500, gold: 150, seed: "Gole", traits: ['fire_immunity'], dmgType: 'bludgeoning', theme: 'ashen' }
+        { name: "Демон-охотник", hp: 110, ac: 14, hit: 6, dmgD: 8, dmgMod: 4, xp: 1500, gold: 150, seed: "Dem", traits: ['fire_resistance'], atk: 2, dmgType: 'piercing', abilities: ['demon_chains'], theme: 'ashen' },
+        { name: "Пепельный голем", hp: 125, ac: 13, hit: 5, dmgD: 12, dmgMod: 4, xp: 1500, gold: 150, seed: "Gole", traits: ['fire_immunity'], dmgType: 'bludgeoning', abilities: ['golem_ash'], theme: 'ashen' }
     ],
     // 10 — Врата Босса (без вариаций)
     [
-        { name: "Огненный Элементаль", hp: 130, ac: 15, hit: 7, dmgD: 10, dmgMod: 4, xp: 2500, gold: 200, seed: "Fire", traits: ['fire_immunity'], atk: 2, dmgType: 'fire', theme: 'volcanic' }
+        { name: "Огненный Элементаль", hp: 130, ac: 15, hit: 7, dmgD: 10, dmgMod: 4, xp: 2500, gold: 200, seed: "Fire", traits: ['fire_immunity'], atk: 2, dmgType: 'fire', abilities: ['elemental_ignite', 'elemental_vortex'], theme: 'volcanic' }
     ],
     // 11 — Руины
     [
-        { name: "Рыцарь смерти", hp: 150, ac: 16, hit: 8, dmgD: 12, dmgMod: 5, xp: 4000, gold: 250, seed: "Kni", traits: [], atk: 2, dmgType: 'slashing', theme: 'ruins' },
-        { name: "Каменный страж руин", hp: 160, ac: 17, hit: 7, dmgD: 10, dmgMod: 5, xp: 4000, gold: 250, seed: "Guar", traits: ['undead_fortitude'], dmgType: 'bludgeoning', theme: 'ruins' }
+        { name: "Рыцарь смерти", hp: 150, ac: 16, hit: 8, dmgD: 12, dmgMod: 5, xp: 4000, gold: 250, seed: "Kni", traits: [], atk: 2, dmgType: 'slashing', abilities: ['dk_hellfire'], theme: 'ruins' },
+        { name: "Каменный страж руин", hp: 160, ac: 17, hit: 7, dmgD: 10, dmgMod: 5, xp: 4000, gold: 250, seed: "Guar", traits: ['undead_fortitude'], dmgType: 'bludgeoning', abilities: ['guardian_slow'], theme: 'ruins' }
     ],
     // 12 — Топи (либо пустынный хищник)
     [
-        { name: "Гидра", hp: 180, ac: 15, hit: 8, dmgD: 10, dmgMod: 5, xp: 4000, gold: 300, seed: "Hydra", traits: ['regeneration'], atk: 3, dmgType: 'piercing', theme: 'swamp' },
-        { name: "Гигантский скорпион", hp: 170, ac: 16, hit: 8, dmgD: 10, dmgMod: 5, xp: 4000, gold: 310, seed: "Scor", traits: ['reckless'], atk: 2, dmgType: 'piercing', theme: 'desert' }
+        { name: "Гидра", hp: 180, ac: 15, hit: 8, dmgD: 10, dmgMod: 5, xp: 4000, gold: 300, seed: "Hydra", traits: ['regeneration'], atk: 3, dmgType: 'piercing', abilities: ['hydra_venom'], heads: { cut: 25, max: 5 }, theme: 'swamp' },
+        { name: "Гигантский скорпион", hp: 170, ac: 16, hit: 8, dmgD: 10, dmgMod: 5, xp: 4000, gold: 310, seed: "Scor", traits: ['reckless'], atk: 2, dmgType: 'piercing', abilities: ['scorpion_pincers', 'scorpion_sting'], theme: 'desert' }
     ],
     // 13 — Проклятые земли
     [
-        { name: "Высший вампир", hp: 200, ac: 17, hit: 9, dmgD: 12, dmgMod: 5, xp: 9000, gold: 400, seed: "Vamp", traits: ['lifesteal', 'nimble'], atk: 2, dmgType: 'piercing', theme: 'haunted' },
-        { name: "Воющая баньши", hp: 190, ac: 16, hit: 9, dmgD: 16, dmgMod: 5, xp: 9000, gold: 400, seed: "Bans", traits: ['undead_fortitude'], dmgType: 'necrotic', theme: 'haunted' }
+        { name: "Высший вампир", hp: 200, ac: 17, hit: 9, dmgD: 12, dmgMod: 5, xp: 9000, gold: 400, seed: "Vamp", traits: ['lifesteal', 'nimble'], atk: 2, dmgType: 'piercing', abilities: ['vampire_charm', 'vampire_bite'], theme: 'haunted' },
+        { name: "Воющая баньши", hp: 190, ac: 16, hit: 9, dmgD: 16, dmgMod: 5, xp: 9000, gold: 400, seed: "Bans", traits: ['undead_fortitude'], dmgType: 'necrotic', abilities: ['banshee_visage', 'banshee_wail'], theme: 'haunted' }
     ],
     // 14 — Пепелища
     [
-        { name: "Дьявол ямы", hp: 240, ac: 18, hit: 10, dmgD: 12, dmgMod: 6, xp: 11000, gold: 500, seed: "Pit", traits: ['fire_immunity'], atk: 3, dmgType: 'fire', theme: 'ashen' },
-        { name: "Гончая преисподней", hp: 200, ac: 16, hit: 11, dmgD: 8, dmgMod: 5, xp: 11000, gold: 500, seed: "Hell", traits: ['fire_immunity'], atk: 3, dmgType: 'fire', theme: 'ashen' }
+        { name: "Дьявол ямы", hp: 240, ac: 18, hit: 10, dmgD: 12, dmgMod: 6, xp: 11000, gold: 500, seed: "Pit", traits: ['fire_immunity'], atk: 3, dmgType: 'fire', abilities: ['pit_aura', 'pit_fireball'], theme: 'ashen' },
+        { name: "Гончая преисподней", hp: 200, ac: 16, hit: 11, dmgD: 8, dmgMod: 5, xp: 11000, gold: 500, seed: "Hell", traits: ['fire_immunity'], atk: 3, dmgType: 'fire', abilities: ['hound_breath'], theme: 'ashen' }
     ],
     // 15 — Вулкан (либо пустынные каньоны)
     [
-        { name: "Древний красный дракон", hp: 280, ac: 19, hit: 11, dmgD: 12, dmgC: 2, dmgMod: 7, xp: 15000, gold: 800, seed: "Drag", traits: ['fire_immunity'], atk: 2, dmgType: 'fire', theme: 'volcanic' },
-        { name: "Древний медный дракон", hp: 275, ac: 19, hit: 11, dmgD: 12, dmgC: 2, dmgMod: 7, xp: 15000, gold: 800, seed: "Copp", traits: ['nimble'], atk: 2, dmgType: 'acid', theme: 'desert' }
+        { name: "Древний красный дракон", hp: 280, ac: 19, hit: 11, dmgD: 12, dmgC: 2, dmgMod: 7, xp: 15000, gold: 800, seed: "Drag", traits: ['fire_immunity'], atk: 2, dmgType: 'fire', abilities: ['dragon_presence', 'dragon_breath', 'dragon_wing'], theme: 'volcanic' },
+        { name: "Древний медный дракон", hp: 275, ac: 19, hit: 11, dmgD: 12, dmgC: 2, dmgMod: 7, xp: 15000, gold: 800, seed: "Copp", traits: ['nimble'], atk: 2, dmgType: 'acid', abilities: ['dragon_presence', 'copper_acid_breath', 'copper_slow_breath'], theme: 'desert' }
     ],
     // 16 — Бездна, БОСС (без вариаций)
     [
-        { name: "ЛОРД БЕЗДНЫ (БОСС)", hp: 350, ac: 20, hit: 12, dmgD: 10, dmgMod: 8, xp: 15000, gold: 2000, seed: "Boss", traits: ['lifesteal', 'reckless'], atk: 3, dmgType: 'necrotic', theme: 'abyss' }
+        { name: "ЛОРД БЕЗДНЫ (БОСС)", hp: 350, ac: 20, hit: 12, dmgD: 10, dmgMod: 8, xp: 15000, gold: 2000, seed: "Boss", traits: ['lifesteal', 'reckless'], atk: 3, dmgType: 'necrotic', abilities: ['boss_dread', 'boss_void_blast', 'boss_soul_drain'], theme: 'abyss' }
     ]
 ];
 
@@ -278,9 +299,21 @@ export const enemyState = {
             xpGiven: isElite ? config.xp * 2 : config.xp, 
             goldGiven: actualGold, goldCritMsg: goldCritMsg, 
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${config.seed}${stage}`,
-            traits: config.traits ||
-[],
-            hitByFire: false, usedFortitude: false
+            traits: config.traits || [],
+            hitByFire: false, usedFortitude: false,
+
+            // --- Особые способности (см. abilities.js) ---
+            // Сл спасбросков врага = 8 + бонус мастерства этапа + ⅓ мод. урона (+1 у элиты);
+            // у отдельных способностей может быть своя надбавка dcBonus.
+            saveDc: 8 + (Math.ceil(stage / 4) + 1) + Math.floor((config.dmgMod || 0) / 3) + (isElite ? 1 : 0),
+            // Состояние способностей: ready — для «Перезарядки», usesLeft — для «N раз за бой»
+            abilities: (config.abilities || []).map(id => ({
+                id, ready: true,
+                usesLeft: (abilityCatalog[id] && abilityCatalog[id].uses != null) ? abilityCatalog[id].uses : null
+            })),
+            heads: config.heads ? { ...config.heads } : null, // Гидра: порог урона за раунд и макс. число голов
+            turnFlags: {}, hpAtRoundStart: Math.floor(config.hp * hpMult),
+            stolenGold: 0, frenzied: false, deathDone: false
         };
     }
 };

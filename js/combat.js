@@ -5,6 +5,12 @@ import { enterStage, refreshStageUi, logStageHint } from './map.js';
 import { sfx } from './audio.js';
 import { saveGame } from './storage.js'; // <-- Добавлено
 import { has, grantAspectSlotsIfNeeded, tryShowAspectPicker } from './aspects.js';
+import { abilityCatalog, conditionMeta, saveNames, describeAbility } from './abilities.js';
+import {
+    hasCond, clearConditions, applyCondition, drainMaxHp, restoreMaxHp,
+    attackDisadvantageNames, enemyAdvantageNames,
+    applyTurnStartConditions, processTurnEndConditions, endEnemyTurnCleanup
+} from './conditions.js';
 
 function getFireDamageTotal(diceCount, diceSides) {
     let calcRoll = () => {
@@ -49,6 +55,7 @@ export function startGame() {
 }
 
 export function startStage(isElite = false, variantIdx = 0) {
+    restoreMaxHp(); clearConditions(); // на случай, если прошлый бой оборвался с активными эффектами
     gameState.isAnimating = false; enemyState.generate(gameState.stage, isElite, variantIdx); renderNewEnemy();
     gameState.inCombat = true; player.archonActive = false; player.tempHp = 0; player.archonAspectAcBonus = 0;
     // Сброс ресурсов Аспектов на бой
@@ -56,6 +63,7 @@ export function startStage(isElite = false, variantIdx = 0) {
     player.reactionAvailable = true;
     updateUI();
     log(`<b>--- Битва ${gameState.stage} / ${gameState.maxStage}: ${enemyState.current.name} ---</b>`, 'system');
+    logEnemyAbilities();
     if (player.level >= 7) activateArchon(true); 
     const pInit = roll(20) + player.dexMod; const eInit = roll(20) + (Math.floor(Math.random() * 4)); 
     log(`Инициатива: Вы <span class="dice-roll">${pInit}</span> vs Враг <span class="dice-roll">${eInit}</span>`, 'system');
@@ -134,7 +142,17 @@ function startPlayerTurn() {
     player.actions = 1; player.bonusActions = 1; player.attacksRemaining = player.attacksPerAction; player.fireStrikeUsedThisTurn = false; player.attackedThisTurn = false;
     player.otherworldlyMawUsedThisTurn = false;
     player.reactionAvailable = true; // Реакция (Опаловый щит / Адское возмездие) обновляется в начале своего хода
-    ui.fireToggle.checked = false; log(`<b>Ваш ход!</b>`, 'player-turn'); updateUI();
+    ui.fireToggle.checked = false; log(`<b>Ваш ход!</b>`, 'player-turn');
+    enemyState.current.hpAtRoundStart = enemyState.current.hp; // для механики голов Гидры
+
+    // Эффекты состояний (вставание, замедление, очарование, паралич)
+    const skipTurn = applyTurnStartConditions();
+    if (skipTurn) {
+        gameState.isAnimating = true; updateUI();
+        setTimeout(() => { if (gameState.inCombat) startEnemyTurn(); }, TIMINGS.enemyTurnEnd);
+        return;
+    }
+    updateUI();
 }
 
 export function castSpell(spell) {
@@ -202,13 +220,17 @@ function performSingleStrike(atkTypeStr, isMainAttack = true) {
     }
 
     let d20 = roll(20);
+    // Помеха от состояний (Отравлен, Испуган, Опутан, Ослеплён): бросаем два d20, берём меньший
+    const disadvNames = attackDisadvantageNames();
+    const disadvTag = disadvNames.length ? ` <span style="color:#e57373;">[помеха: ${disadvNames.join(', ')}]</span>` : '';
+    if (disadvNames.length) { const d20b = roll(20); if (d20b < d20) d20 = d20b; }
     const atkTotal = d20 + player.hitMod;
     const isCrit = d20 >= 20;
     const isMiss = d20 === 1 || (!isCrit && atkTotal < enemyState.current.ac);
 
     if (isMiss && !isCrit) { 
         sfx.miss(); spawnFloatingText(ui.enemyAvatar, "Промах", "#9e9e9e");
-        log(`[${atkTypeStr}] Промах! <span class="dice-roll">${d20}</span> + ${player.hitMod} = ${atkTotal} vs AC ${enemyState.current.ac}`, 'player-turn'); return; 
+        log(`[${atkTypeStr}] Промах! <span class="dice-roll">${d20}</span> + ${player.hitMod} = ${atkTotal} vs AC ${enemyState.current.ac}${disadvTag}`, 'player-turn'); return; 
     }
 
     let fireTotal = 0; let radTotal = 0; let forceTotal = 0; let baseDmgStr = ""; let aspectLogParts =[];
@@ -259,7 +281,7 @@ function performSingleStrike(atkTypeStr, isMainAttack = true) {
     if (isCrit) { sfx.crit(); triggerShake(); spawnFloatingText(ui.enemyAvatar, `КРИТ! -${totalDone}`, "#f44336"); }
     else { sfx.hit(); spawnFloatingText(ui.enemyAvatar, `-${totalDone}`, (player.level >= 3 ? "#e64a19" : "#fbc02d")); }
 
-    let hitMsg = `[${atkTypeStr}] ${isCrit ? `<span class="crit">КРИТ!</span> ` : `Попадание (<span class="dice-roll">${d20}</span>+${player.hitMod}=${atkTotal}). `}`;
+    let hitMsg = `[${atkTypeStr}] ${isCrit ? `<span class="crit">КРИТ!</span> ` : `Попадание (<span class="dice-roll">${d20}</span>+${player.hitMod}=${atkTotal}).${disadvTag} `}`;
     if (player.level >= 3) { 
         hitMsg += `<br>Урон: <span class="dmg-fire">${appliedFireTotal} огн.</span>`; 
         if (giantFireTotal > 0) hitMsg += ` (включая Огн. удар)`; 
@@ -347,82 +369,273 @@ function takePlayerDamage(amount, dmgType = 'bludgeoning') {
     return dmg;
 }
 
+// ===================================================================
+// ХОД ВРАГА
+// Порядок как в D&D: (конец вашего хода → повторные спасброски состояний)
+// → механики врага (головы Гидры, Ярость, Перезарядка)
+// → урон от состояний (горение, пиявка)
+// → бонусная способность → ОСОБОЕ ДЕЙСТВИЕ либо Мультиатака (+ «при попадании»).
+// ===================================================================
 export function startEnemyTurn() {
     if (!gameState.inCombat) return;
+    const e = enemyState.current;
+
+    // Конец вашего хода: повторные спасброски от состояний, истечение длительности
+    processTurnEndConditions();
+
     gameState.turn = 'enemy'; gameState.isAnimating = true; updateUI();
     log(`<b>Ход врага...</b>`, 'enemy-turn');
+    e.turnFlags = {};
 
-    if (enemyState.current.traits.includes('regeneration') && enemyState.current.hp > 0 && enemyState.current.hp < enemyState.current.maxHp) {
-        if (!enemyState.current.hitByFire) {
-            let heal = 10; enemyState.current.hp = Math.min(enemyState.current.maxHp, enemyState.current.hp + heal);
+    updateHeads(); // считаем урон за раунд ДО регенерации и сброса флага огня
+
+    if (e.traits.includes('regeneration') && e.hp > 0 && e.hp < e.maxHp) {
+        if (!e.hitByFire) {
+            let heal = 10; e.hp = Math.min(e.maxHp, e.hp + heal);
             log(`💚 Враг <b>регенерирует</b> ${heal} ХП!`, 'enemy-turn'); updateUI();
         } else log(`🔥 Огонь подавляет регенерацию врага!`, 'system');
     }
-    enemyState.current.hitByFire = false; 
+    e.hitByFire = false;
 
-    // Мультиатака: враг бьёт enemyState.current.attacks раз подряд (по
-    // умолчанию 1 — обычное поведение). Каждый удар — полноценная атака
-    // со своим броском, критом и уроном; серия останавливается сразу,
-    // как только бой решился (игрок пал, или враг погиб от Возмездия).
-    const totalAttacks = Math.max(1, enemyState.current.attacks || 1);
+    // «Кровавая ярость»: раненый враг бьёт чаще
+    if (e.traits.includes('frenzy') && !e.frenzied && e.hp > 0 && e.hp <= e.maxHp / 2) {
+        e.frenzied = true; e.attacks += 1;
+        log(`🩸 <b>Кровавая ярость!</b> ${e.name} впадает в неистовство — ударов за ход: ${e.attacks}.`, 'enemy-turn');
+        updateUI();
+    }
+
+    rechargeAbilities();
+
+    setTimeout(runEnemyTurn, TIMINGS.enemyTurnStart);
+}
+
+function endEnemyTurn() {
+    endEnemyTurnCleanup();
+    setTimeout(() => { gameState.isAnimating = false; startPlayerTurn(); }, TIMINGS.enemyTurnEnd);
+}
+
+function runEnemyTurn() {
+    const e = enemyState.current;
+    if (!gameState.inCombat || e.hp <= 0) return;
+
+    // 1) Урон от состояний игрока (горение, присосавшаяся пиявка)
+    const ticked = tickPlayerConditions();
+    if (ticked && checkCombatState()) return;
+
+    const afterTicks = () => {
+        if (!gameState.inCombat || e.hp <= 0) return;
+        // 2) Бонусная способность (атаки после неё остаются)
+        const bonus = pickAbility('bonus');
+        if (bonus) { useAbility(bonus); if (checkCombatState()) return; }
+        // 3) Основная фаза
+        if (bonus) setTimeout(enemyMainPhase, TIMINGS.strikeDelay); else enemyMainPhase();
+    };
+    if (ticked) setTimeout(afterTicks, TIMINGS.strikeDelay); else afterTicks();
+}
+
+function enemyMainPhase() {
+    const e = enemyState.current;
+    if (!gameState.inCombat || e.hp <= 0) return;
+
+    // Особое действие (дыхание, заклинание...) ЗАМЕНЯЕТ Мультиатаку на этот ход
+    const action = pickAbility('action');
+    let totalAttacks = Math.max(1, e.attacks || 1);
+    if (action) {
+        useAbility(action);
+        if (checkCombatState()) return;
+        totalAttacks = abilityCatalog[action.id].thenStrikes || 0;
+        if (!totalAttacks) { endEnemyTurn(); return; }
+        setTimeout(() => runStrikes(totalAttacks), TIMINGS.strikeDelay);
+        return;
+    }
+    runStrikes(totalAttacks);
+}
+
+// Мультиатака: враг бьёт total раз подряд (по умолчанию e.attacks).
+// Каждый удар — полноценная атака со своим броском, критом и уроном;
+// серия останавливается сразу, как только бой решился.
+function runStrikes(totalAttacks) {
+    const e = enemyState.current;
     let strikeIndex = 0;
 
     function nextStrike() {
-        if (!gameState.inCombat || enemyState.current.hp <= 0) return;
+        if (!gameState.inCombat || e.hp <= 0) return;
 
         strikeIndex++;
         performEnemyStrike(strikeIndex, totalAttacks);
 
         if (checkCombatState()) return; // Бой завершился этим ударом
 
-        if (strikeIndex < totalAttacks) {
-            setTimeout(nextStrike, TIMINGS.strikeDelay);
-        } else {
-            setTimeout(() => { gameState.isAnimating = false; startPlayerTurn(); }, TIMINGS.enemyTurnEnd);
-        }
+        if (strikeIndex < totalAttacks) setTimeout(nextStrike, TIMINGS.strikeDelay);
+        else endEnemyTurn();
     }
-
-    setTimeout(nextStrike, TIMINGS.enemyTurnStart);
+    nextStrike();
 }
 
-// Один удар вражеской атаки (обычной или одной из серии Мультиатаки).
-// index/total нужны только для подписи в логе, когда ударов больше одного.
-function performEnemyStrike(index, total) {
-    const label = total > 1 ? ` <span style="color:#888; font-size:11px;">(удар ${index}/${total})</span>` : '';
-    let critThreshold = enemyState.current.traits.includes('reckless') ? 19 : 20;
+// ---------- Механики врага ----------
 
-    // --- Помеха от Устрашающего облика (Perilous Visage) ---
-    const hasDisadvantage = player.enemyFrightened;
-    let d20 = roll(20);
-    if (hasDisadvantage) { const d20b = roll(20); if (d20b < d20) d20 = d20b; }
+// Гидра: если за раунд игрок нанёс >= cut урона, одна голова отсечена.
+// Без огня на её месте вырастают ДВЕ (+1 удар, до heads.max), огонь прижигает шею (−1 удар).
+function updateHeads() {
+    const e = enemyState.current;
+    if (!e.heads || e.hp <= 0) return;
+    const lost = (e.hpAtRoundStart != null ? e.hpAtRoundStart : e.hp) - e.hp;
+    if (lost < e.heads.cut) return;
+    if (e.hitByFire) {
+        e.attacks = Math.max(1, e.attacks - 1);
+        log(`🔥 Мощный удар (−${lost} ХП) отсекает голову, и огонь прижигает шею — она не отрастёт! Ударов за ход: ${e.attacks}.`, 'player-turn');
+    } else {
+        e.attacks = Math.min(e.heads.max, e.attacks + 1);
+        log(`🐍 Вы отсекли голову, но без огня на её месте отрастают <b>две</b> новые! Ударов за ход: ${e.attacks}.`, 'enemy-turn');
+    }
+}
 
-    const atkTotal = d20 + enemyState.current.hitMod; const isCrit = d20 >= critThreshold;
-    const isMiss = d20 === 1 || (!isCrit && atkTotal < player.ac);
+// «Перезарядка N–6»: в начале хода врага d6 для каждой остывшей способности
+function rechargeAbilities() {
+    const e = enemyState.current;
+    (e.abilities || []).forEach(a => {
+        const def = abilityCatalog[a.id];
+        if (!def || !def.recharge || a.ready) return;
+        const r = roll(6);
+        if (r >= def.recharge) {
+            a.ready = true;
+            log(`🔄 <b>${def.name}</b> перезарядилась (d6: <span class="dice-roll">${r}</span>).`, 'enemy-turn');
+        }
+    });
+}
 
-    if (isMiss && !isCrit) {
-        sfx.miss(); spawnFloatingText(ui.playerAvatar, "Уворот", "#9e9e9e");
-        log(`${enemyState.current.name}${label} не пробивает (<span class="dice-roll">${d20}</span>${hasDisadvantage ? ' [помеха]' : ''} + ${enemyState.current.hitMod} = ${atkTotal}) Эфирную броню!`, 'enemy-turn');
-        return;
+// Выбрать готовую способность нужного типа (с учётом шанса применения)
+function pickAbility(kind) {
+    const e = enemyState.current;
+    for (const a of (e.abilities || [])) {
+        const def = abilityCatalog[a.id];
+        if (!def || def.kind !== kind || !a.ready || a.usesLeft === 0) continue;
+        if (Math.random() < (def.chance != null ? def.chance : 1)) return a;
+    }
+    return null;
+}
+
+function useAbility(entry) {
+    const def = abilityCatalog[entry.id];
+    if (def.uses != null && entry.usesLeft != null) entry.usesLeft--;
+    if (def.recharge) entry.ready = false;
+    resolveAbility(def);
+}
+
+// Карточка монстра в начале боя: что он умеет
+function logEnemyAbilities() {
+    const e = enemyState.current;
+    const lines = (e.abilities || []).map(a => {
+        const def = abilityCatalog[a.id];
+        return def ? `${def.icon} <b>${def.name}</b> <span style="color:#aaa;">— ${describeAbility(def, abilityDc(def))}</span>` : '';
+    }).filter(Boolean);
+    if (e.heads) lines.push(`🐍 <b>Многоглавость</b> <span style="color:#aaa;">— ≥${e.heads.cut} урона за раунд отсекает голову; без огня вырастают две</span>`);
+    if (e.traits.includes('frenzy')) lines.push(`🩸 <b>Кровавая ярость</b> <span style="color:#aaa;">— ниже 50% ХП +1 удар за ход</span>`);
+    if (lines.length) log(`📜 <b>Особенности врага:</b><br>${lines.join('<br>')}`, 'system');
+}
+
+// ---------- Урон от состояний ----------
+function tickPlayerConditions() {
+    let any = false;
+    Object.keys(player.conditions || {}).forEach(id => {
+        const c = player.conditions[id];
+        if (!c || !c.tick || player.hp <= 0) return;
+        any = true;
+        const dmg = roll(c.tick.d, c.tick.n);
+        const dt = damageTypeMeta[c.tick.type] || damageTypeMeta.bludgeoning;
+        const taken = takePlayerDamage(dmg, c.tick.type);
+        triggerFlash(ui.playerAvatar); spawnFloatingText(ui.playerAvatar, `-${taken}`, "#d32f2f");
+        log(`${conditionMeta[id].icon} <b>${c.tick.name || conditionMeta[id].name}:</b> вы получаете <b>${taken}</b> <span class="${dt.className}">${dt.label}</span> урона.`, 'enemy-turn');
+    });
+    return any;
+}
+
+// ---------- Выполнение способности ----------
+function abilityDc(def) {
+    const base = enemyState.current.saveDc != null ? enemyState.current.saveDc : 10;
+    return def.dc != null ? def.dc : base + (def.dcBonus || 0);
+}
+
+const fmtMod = (n) => (n >= 0 ? `+${n}` : `${n}`);
+
+function resolveAbility(def) {
+    const e = enemyState.current;
+    const hasSave = !!def.save;
+    let html = `${def.icon} <b>${def.name}</b> — ${e.name} ${def.text}.`;
+    let saved = false;
+    const dc = abilityDc(def);
+
+    // --- Спасбросок игрока ---
+    if (hasSave) {
+        const r = roll(20);
+        const mod = player.saveMod(def.save);
+        const total = r + mod;
+        // Паралич: автоматический провал спасбросков Силы и Ловкости (как в D&D)
+        const autoFail = hasCond('paralyzed') && (def.save === 'str' || def.save === 'dex');
+        saved = !autoFail && total >= dc;
+        html += `<br>🎲 Спасбросок ${saveNames[def.save]} (Сл ${dc}): <span class="dice-roll">${r}</span>${fmtMod(mod)} = ${total} — ` +
+            (saved ? `<b style="color:#81c784;">успех</b>` : `<b style="color:#e57373;">провал</b>`) + (autoFail ? ' <i>(паралич: авто-провал)</i>' : '');
     }
 
-    let rawDmg = roll(enemyState.current.dmgD, enemyState.current.dmgC) + (isCrit ? roll(enemyState.current.dmgD, enemyState.current.dmgC) : 0) + enemyState.current.dmgMod;
-
-    const dt = damageTypeMeta[enemyState.current.dmgType] || damageTypeMeta.bludgeoning;
-    const totalDmg = takePlayerDamage(rawDmg, enemyState.current.dmgType);
-    
-    triggerFlash(ui.playerAvatar);
-    if (isCrit) { sfx.crit(); triggerShake(); spawnFloatingText(ui.playerAvatar, `КРИТ! -${totalDmg}`, "#f44336"); }
-    else { sfx.hit(); spawnFloatingText(ui.playerAvatar, `-${totalDmg}`, "#d32f2f"); }
-
-    let eMsg = `${enemyState.current.name}${label} ${isCrit ? '<span class="crit">наносит КРИТ!</span> ' : `попадает. `}Вы получаете <b>${totalDmg}</b> <span class="${dt.className}">${dt.label}</span> урона!`;
-    if (rawDmg !== totalDmg) eMsg += ` <i>(снижено с ${rawDmg})</i>`;
-    
-    if (enemyState.current.traits.includes('lifesteal') && totalDmg > 0) {
-        let heal = Math.floor(totalDmg / 2); enemyState.current.hp = Math.min(enemyState.current.maxHp, enemyState.current.hp + heal);
-        eMsg += ` <br>🦇 <i>Вампиризм: враг восстановил ${heal} ХП.</i>`;
+    // --- Урон ---
+    let hpLost = 0; let anyEffect = false;
+    if (def.dmg) {
+        const mode = def.dmgMode || 'half';
+        const parts = [];
+        def.dmg.forEach(p => {
+            let amt = roll(p.d, p.n) + (p.bonus || 0);
+            if (hasSave && saved) amt = mode === 'half' ? Math.floor(amt / 2) : (mode === 'fail' ? 0 : amt);
+            if (amt <= 0) return;
+            const dt = damageTypeMeta[p.type] || damageTypeMeta.bludgeoning;
+            const lost = takePlayerDamage(amt, p.type);
+            hpLost += lost;
+            parts.push(`<b>${lost}</b> <span class="${dt.className}">${dt.label}</span>${lost !== amt ? ` <i>(снижено с ${amt})</i>` : ''}`);
+        });
+        if (parts.length) {
+            anyEffect = true;
+            html += `<br>Вы получаете ${parts.join(' + ')} урона` + (saved && mode === 'half' ? ' <i>(спасбросок — вдвое меньше)</i>' : '') + '.';
+        } else html += `<br>Урон не получен.`;
     }
-    log(eMsg, 'enemy-turn');
 
+    // --- Состояние (только при провале спасброска) ---
+    if (def.cond && (!hasSave || !saved)) {
+        const res = applyCondition(def.cond.id, { turns: def.cond.turns, tick: def.cond.tick, dc });
+        const meta = conditionMeta[def.cond.id];
+        if (res === 'immune') html += `<br>🛡️ Вы ещё не оправились от прошлого эффекта — <b>${meta.name}</b> не действует.`;
+        else { anyEffect = true; html += `<br>${meta.icon} <b>${meta.name}:</b> ${meta.desc}`; }
+    }
+
+    // --- Иссушение макс. ХП ---
+    if (def.drain && (!hasSave || !saved) && hpLost > 0) {
+        const n = drainMaxHp(hpLost);
+        if (n > 0) { anyEffect = true; html += `<br>🩸 <b>Иссушение:</b> максимум ХП снижен на ${n} до конца боя.`; }
+    }
+
+    // --- Кража золота ---
+    if (def.steal && (!hasSave || !saved)) {
+        const amount = Math.min(player.gold, Math.max(1, Math.floor(player.gold * def.steal)));
+        if (player.gold > 0 && amount > 0) {
+            player.gold -= amount; e.stolenGold = (e.stolenGold || 0) + amount; anyEffect = true;
+            html += `<br>🪙 Украдено <b>${amount}</b> золота! Убейте вора — и вернёте кошель.`;
+        } else html += `<br>🪙 Кошель пуст — красть нечего.`;
+    }
+
+    log(html, 'enemy-turn');
+
+    // --- Звук и анимация ---
+    if (hpLost > 0) {
+        triggerFlash(ui.playerAvatar); spawnFloatingText(ui.playerAvatar, `-${hpLost}`, "#d32f2f");
+    } else if (hasSave && saved && !anyEffect) {
+        spawnFloatingText(ui.playerAvatar, "Устоял", "#81c784");
+    }
+    if (anyEffect || hpLost > 0) { (sfx[def.sfx] || sfx.hit)(); if (def.shake) triggerShake(); }
+    else sfx.miss();
+
+    if (hpLost > 0 && player.hp > 0 && e.hp > 0) tryHellishRebuke(hpLost);
+}
+
+// Адское возмездие: реакция на полученный урон (общий код для ударов и способностей)
+function tryHellishRebuke(totalDmg) {
     if (ui.rebukeToggle.checked && player.spellSlots > 0 && player.reactionAvailable && totalDmg > 0 && enemyState.current.hp > 0) {
         player.spellSlots--; ui.rebukeToggle.checked = false; player.reactionAvailable = false;
         sfx.fire();
@@ -438,17 +651,110 @@ function performEnemyStrike(index, total) {
     }
 }
 
+// «При попадании»: после удачного удара серии проверяем способности-приложения
+function runRiders(index, total) {
+    const e = enemyState.current;
+    (e.abilities || []).forEach(entry => {
+        if (player.hp <= 0 || e.hp <= 0) return;
+        const def = abilityCatalog[entry.id];
+        if (!def || def.kind !== 'rider') return;
+        if (def.onStrike === 'first' && index !== 1) return;
+        if (def.onStrike === 'last' && index !== total) return;
+        if (def.requires && !def.requires.some(hasCond)) return;
+        if (!e.turnFlags) e.turnFlags = {};
+        if (def.once !== false && e.turnFlags[entry.id]) return;
+        e.turnFlags[entry.id] = true;
+        resolveAbility(def);
+    });
+}
+
+// «При смерти» (Костяной взрыв и т.п.)
+function runDeathAbilities() {
+    const e = enemyState.current;
+    (e.abilities || []).forEach(entry => {
+        const def = abilityCatalog[entry.id];
+        if (def && def.kind === 'death') resolveAbility(def);
+    });
+}
+
+// Один удар вражеской атаки (обычной или одной из серии Мультиатаки).
+// index/total нужны для подписи в логе и для способностей «первый/последний удар».
+function performEnemyStrike(index, total) {
+    const e = enemyState.current;
+    const label = total > 1 ? ` <span style="color:#888; font-size:11px;">(удар ${index}/${total})</span>` : '';
+    let critThreshold = e.traits.includes('reckless') ? 19 : 20;
+
+    // --- Преимущество (Опутан/Ослеплён/Парализован/Сбит с ног) и помеха (Устрашающий облик) ---
+    const advNames = enemyAdvantageNames();
+    const hasAdvantage = advNames.length > 0;
+    const hasDisadvantage = player.enemyFrightened;
+    let d20 = roll(20);
+    if (hasAdvantage !== hasDisadvantage) { // преимущество и помеха взаимно гасятся
+        const d20b = roll(20);
+        d20 = hasAdvantage ? Math.max(d20, d20b) : Math.min(d20, d20b);
+    }
+    const rollTag = (hasAdvantage !== hasDisadvantage) ? (hasAdvantage ? ` [преимущество: ${advNames.join(', ')}]` : ' [помеха]') : '';
+
+    const atkTotal = d20 + e.hitMod;
+    // Против парализованного любое попадание — критическое
+    const isCrit = d20 >= critThreshold || (hasCond('paralyzed') && d20 !== 1 && atkTotal >= player.ac);
+    const isMiss = d20 === 1 || (!isCrit && atkTotal < player.ac);
+
+    if (isMiss && !isCrit) {
+        sfx.miss(); spawnFloatingText(ui.playerAvatar, "Уворот", "#9e9e9e");
+        log(`${e.name}${label} не пробивает (<span class="dice-roll">${d20}</span>${rollTag} + ${e.hitMod} = ${atkTotal}) Эфирную броню!`, 'enemy-turn');
+        return;
+    }
+
+    let rawDmg = roll(e.dmgD, e.dmgC) + (isCrit ? roll(e.dmgD, e.dmgC) : 0) + e.dmgMod;
+
+    const dt = damageTypeMeta[e.dmgType] || damageTypeMeta.bludgeoning;
+    const totalDmg = takePlayerDamage(rawDmg, e.dmgType);
+    
+    triggerFlash(ui.playerAvatar);
+    if (isCrit) { sfx.crit(); triggerShake(); spawnFloatingText(ui.playerAvatar, `КРИТ! -${totalDmg}`, "#f44336"); }
+    else { sfx.hit(); spawnFloatingText(ui.playerAvatar, `-${totalDmg}`, "#d32f2f"); }
+
+    let eMsg = `${e.name}${label} ${isCrit ? '<span class="crit">наносит КРИТ!</span> ' : `попадает. `}Вы получаете <b>${totalDmg}</b> <span class="${dt.className}">${dt.label}</span> урона!`;
+    if (rawDmg !== totalDmg) eMsg += ` <i>(снижено с ${rawDmg})</i>`;
+    if (rollTag && hasAdvantage) eMsg += ` <span style="color:#e57373; font-size:11px;">${rollTag}</span>`;
+    
+    if (e.traits.includes('lifesteal') && totalDmg > 0) {
+        let heal = Math.floor(totalDmg / 2); e.hp = Math.min(e.maxHp, e.hp + heal);
+        eMsg += ` <br>🦇 <i>Вампиризм: враг восстановил ${heal} ХП.</i>`;
+    }
+    log(eMsg, 'enemy-turn');
+
+    tryHellishRebuke(totalDmg);
+
+    // --- Способности «при попадании» (с их спасбросками) ---
+    if (player.hp > 0 && e.hp > 0) runRiders(index, total);
+}
+
 function checkCombatState() {
     updateUI();
     if (enemyState.current.hp <= 0) {
+        // «При смерти» (Костяной взрыв): срабатывает один раз, ДО подведения итогов боя
+        if (!enemyState.current.deathDone) {
+            enemyState.current.deathDone = true;
+            log(`<b>${enemyState.current.name} повержен!</b>`, 'system');
+            runDeathAbilities(); updateUI();
+            if (player.hp <= 0) { gameState.inCombat = false; setTimeout(() => showLoseScreen(gameState.stage, player.level), TIMINGS.gameOver); return true; }
+        } else log(`<b>${enemyState.current.name} повержен!</b>`, 'system');
+
         gameState.inCombat = false; gameState.isAnimating = true; 
         sfx.coin(); 
-        log(`<b>${enemyState.current.name} повержен!</b>`, 'system');
+        restoreMaxHp(); clearConditions(); // Иссушение и боевые состояния не переживают бой
         if (gameState.stage === gameState.maxStage) { setTimeout(showWinScreen, TIMINGS.gameOver); return true; }
 
         player.xp += enemyState.current.xpGiven; player.gold += enemyState.current.goldGiven;
         if (enemyState.current.goldCritMsg) { log(enemyState.current.goldCritMsg, 'system'); } 
         else { log(`Получено ${enemyState.current.xpGiven} опыта и 💰 ${enemyState.current.goldGiven} золота.`, 'system'); }
+        if (enemyState.current.stolenGold > 0) {
+            player.gold += enemyState.current.stolenGold;
+            log(`🪙 Вы возвращаете украденное: +${enemyState.current.stolenGold} золота.`, 'system');
+            enemyState.current.stolenGold = 0;
+        }
         
         let levelUpMsgs = player.checkLevelUp(); 
         grantAspectSlotsIfNeeded();

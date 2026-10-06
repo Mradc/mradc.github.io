@@ -2,6 +2,7 @@ import { player, enemyState, gameState, damageTypeMeta } from './state.js';
 import { xpThresholds } from './utils.js';
 import { sfx } from './audio.js';
 import { clearSave, saveStats } from './storage.js';
+import { abilityCatalog, conditionMeta } from './abilities.js';
 
 export const ui = {
     menu: document.getElementById('menu-screen'), game: document.getElementById('game-screen'), over: document.getElementById('game-over-screen'), log: document.getElementById('combat-log'),
@@ -16,7 +17,7 @@ export const ui = {
     indAction: document.querySelector('#ind-action .dot'), indBonus: document.querySelector('#ind-bonus .dot'),
     playerHpText: document.getElementById('player-hp-text'), playerHpBar: document.getElementById('player-hp-bar'), playerXpText: document.getElementById('player-xp-text'), playerXpBar: document.getElementById('player-xp-bar'),
     playerLevel: document.getElementById('player-level'), playerAc: document.getElementById('player-ac'), playerGold: document.getElementById('player-gold'),
-    playerAvatar: document.getElementById('player-avatar'),
+    playerAvatar: document.getElementById('player-avatar'), playerConditions: document.getElementById('player-conditions'),
     enemyHpText: document.getElementById('enemy-hp-text'), enemyHpBar: document.getElementById('enemy-hp-bar'), enemyAvatar: document.getElementById('enemy-avatar'), enemyName: document.getElementById('enemy-name'),
     enemyAc: document.getElementById('enemy-ac'), enemyTraits: document.getElementById('enemy-traits'),
     gameOverTitle: document.getElementById('game-over-title'), gameOverDesc: document.getElementById('game-over-desc'),
@@ -65,7 +66,7 @@ export const ui = {
     aspectDesc: document.getElementById('aspect-desc'), aspectBody: document.getElementById('aspect-body')
 };
 
-const traitNames = { 'nimble': 'Вёрткий', 'undead_fortitude': 'Стойкость нежити', 'lifesteal': 'Вампиризм', 'regeneration': 'Регенерация', 'fire_resistance': 'Сопротивление огню', 'fire_immunity': 'Иммунитет к огню', 'reckless': 'Безрассудный' };
+const traitNames = { 'nimble': 'Вёрткий', 'undead_fortitude': 'Стойкость нежити', 'lifesteal': 'Вампиризм', 'regeneration': 'Регенерация', 'fire_resistance': 'Сопротивление огню', 'fire_immunity': 'Иммунитет к огню', 'reckless': 'Безрассудный', 'frenzy': 'Кровавая ярость' };
 
 export function log(msg, type = 'system') {
     const el = document.createElement('div'); el.className = `log-entry ${type}`; el.innerHTML = msg;
@@ -102,12 +103,37 @@ export function triggerShake() {
 export function renderNewEnemy() {
     if(!enemyState.current) return;
     ui.enemyAvatar.src = enemyState.current.avatar; ui.enemyName.innerText = enemyState.current.name; ui.enemyAc.innerText = enemyState.current.ac;
+    renderEnemyTraits();
+}
+
+// Строка черт врага + строка его особых способностей (⚡ готова, ⏳ перезаряжается, ×N — остаток применений).
+// Вызывается и при появлении врага, и из updateUI — состояние способностей меняется по ходу боя.
+export function renderEnemyTraits() {
+    const e = enemyState.current;
+    if (!e) return;
     const parts = [];
-    if (enemyState.current.attacks > 1) parts.push(`⚔️ Мультиатака ×${enemyState.current.attacks}`);
-    const dt = damageTypeMeta[enemyState.current.dmgType] || damageTypeMeta.bludgeoning;
+    if (e.attacks > 1) parts.push(`⚔️ Мультиатака ×${e.attacks}`);
+    const dt = damageTypeMeta[e.dmgType] || damageTypeMeta.bludgeoning;
     parts.push(`${dt.icon} ${dt.full}`);
-    parts.push(...enemyState.current.traits.map(t => traitNames[t]));
-    ui.enemyTraits.innerText = parts.join(' • ');
+    parts.push(...e.traits.map(t => traitNames[t]).filter(Boolean));
+    const abil = (e.abilities || []).map(a => {
+        const def = abilityCatalog[a.id];
+        if (!def) return '';
+        let s = `${def.icon} ${def.name}`;
+        if (def.recharge) s += a.ready ? ' ⚡' : ' ⏳';
+        if (a.usesLeft != null) s += ` ×${a.usesLeft}`;
+        return s;
+    }).filter(Boolean);
+    ui.enemyTraits.innerHTML = parts.join(' • ') + (abil.length ? `<br><span class="enemy-abil">${abil.join(' • ')}</span>` : '');
+}
+
+// Чипы активных боевых состояний игрока под полосой опыта
+function renderPlayerConditions() {
+    if (!ui.playerConditions) return;
+    ui.playerConditions.innerHTML = Object.keys(player.conditions || {}).map(id => {
+        const m = conditionMeta[id];
+        return m ? `<span class="cond-chip" title="${m.desc}">${m.icon} ${m.name}</span>` : '';
+    }).join('');
 }
 
 export const availableSpells =[
@@ -161,7 +187,10 @@ export function updateUI() {
     // Вне боя и до первой стычки этапа врага может не быть — прячем верхнюю карточку
     ui.enemyUi.classList.toggle('hidden', !enemyState.current);
 
+    renderPlayerConditions();
+
     if (enemyState.current) {
+        renderEnemyTraits();
         ui.enemyHpText.innerText = `${Math.max(0, enemyState.current.hp)} / ${enemyState.current.maxHp}`;
         ui.enemyHpBar.style.width = `${Math.max(0, (enemyState.current.hp / enemyState.current.maxHp) * 100)}%`;
     }
