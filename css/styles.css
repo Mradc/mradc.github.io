@@ -5,6 +5,7 @@
     --accent: #d84b20; --hp-color: #d32f2f; --thp-color: #1976d2; --xp-color: #388e3c;
     --radiant-color: #fbc02d; --fire-color: #e64a19; --enemy-color: #7b1fa2; --levelup-color: #ffd700; --aspect-color: #ba68c8;
     --bludgeoning-color: #a1887f; --piercing-color: #b0bec5; --slashing-color: #e57373; --necrotic-color: #8bc34a;
+    --acid-color: #c0ca33; --poison-color: #66bb6a; --psychic-color: #f06292;
 }
 
 body { margin: 0; padding: 0; font-family: 'Roboto', sans-serif; background-color: var(--bg-dark); color: var(--text-light); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -34,6 +35,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .name { font-size: 16px; font-weight: bold; font-family: 'Cinzel', serif; color: #fff; margin:0;}
 .level-text { font-size: 12px; color: #aaa; font-family: 'Roboto', sans-serif;}
 .enemy-traits { font-size: 11px; color: #ffb74d; margin: -2px 0 2px 0; font-style: italic; }
+.enemy-abil { color: #ce93d8; font-style: normal; }
+.conditions-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.conditions-row:empty { display: none; }
+.cond-chip { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #2a1f33; border: 1px solid var(--aspect-color); color: #e1bee7; white-space: nowrap; }
 .gold-text { font-size: 14px; font-weight: bold; color: #ffd700; text-shadow: 0 0 4px rgba(255,215,0,0.4); }
 
 .bar-container { width: 100%; height: 14px; background-color: #121212; border-radius: 4px; overflow: hidden; position: relative; border: 1px solid #333; }
@@ -74,6 +79,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .dmg-bludgeoning { color: var(--bludgeoning-color); font-weight: bold; text-shadow: 0 0 4px rgba(161,136,127,0.4); }
 .dmg-piercing { color: var(--piercing-color); font-weight: bold; text-shadow: 0 0 4px rgba(176,190,197,0.4); }
 .dmg-slashing { color: var(--slashing-color); font-weight: bold; text-shadow: 0 0 4px rgba(229,115,115,0.4); }
+.dmg-acid { color: var(--acid-color); font-weight: bold; text-shadow: 0 0 4px rgba(192,202,51,0.5); }
+.dmg-poison { color: var(--poison-color); font-weight: bold; text-shadow: 0 0 4px rgba(102,187,106,0.5); }
+.dmg-psychic { color: var(--psychic-color); font-weight: bold; text-shadow: 0 0 4px rgba(240,98,146,0.5); }
 .dmg-necrotic { color: var(--necrotic-color); font-weight: bold; text-shadow: 0 0 4px rgba(139,195,74,0.5); }
 .crit { color: #f44336; font-weight: bold; text-transform: uppercase; }
 
